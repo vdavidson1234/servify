@@ -1,6 +1,6 @@
 package com.servify.publicaciones.domain.service;
 
-import com.servify.publicaciones.domain.valueobject.DisponibilidadHoraria;
+import com.servify.shared.domain.valueobject.DisponibilidadHoraria;
 
 import java.util.List;
 

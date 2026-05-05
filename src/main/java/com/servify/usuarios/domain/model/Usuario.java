@@ -3,6 +3,7 @@ package com.servify.usuarios.domain.model;
 import com.servify.shared.domain.model.BaseEntity;
 import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 import com.servify.usuarios.domain.enumtype.EstadoValidacionIdentidad;
+import com.servify.usuarios.domain.enumtype.Rol;
 import com.servify.usuarios.domain.valueobject.Contacto;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.UUID;
 public class Usuario extends BaseEntity {
 
     private Contacto contacto;
+    private Rol rol;
     private EstadoUsuario estado;
     private EstadoValidacionIdentidad estadoValidacionIdentidad;
     private PerfilUsuario perfil;
@@ -21,16 +23,26 @@ public class Usuario extends BaseEntity {
 
     public Usuario(UUID id,
                    Contacto contacto,
+                   Rol rol,
                    EstadoUsuario estado,
                    EstadoValidacionIdentidad estadoValidacionIdentidad,
                    PerfilUsuario perfil,
                    LocalDateTime fechaRegistro) {
         super(id);
         this.contacto = contacto;
+        this.rol = rol;
         this.estado = estado;
         this.estadoValidacionIdentidad = estadoValidacionIdentidad;
         this.perfil = perfil;
         this.fechaRegistro = fechaRegistro;
+    }
+
+    public Rol getRol() {
+        return rol;
+    }
+
+    public void setRol(Rol rol) {
+        this.rol = rol;
     }
 
     public Contacto getContacto() {
@@ -51,6 +63,25 @@ public class Usuario extends BaseEntity {
 
     public LocalDateTime getFechaRegistro() {
         return fechaRegistro;
+    }
+
+    public boolean esAdmin() {
+        // TODO implementar verificación de rol administrador.
+        // Debe devolver true cuando el usuario posea rol ADMIN.
+        throw new UnsupportedOperationException("Pendiente de implementación");
+    }
+
+    public boolean esUsuarioComun() {
+        // TODO implementar verificación de rol usuario común.
+        // Debe devolver true cuando el usuario posea rol USUARIO.
+        throw new UnsupportedOperationException("Pendiente de implementación");
+    }
+
+    public void actualizarRol(Rol rol) {
+        // TODO implementar actualización de rol.
+        // Debe validar que el nuevo rol no sea nulo y que la transición
+        // sea válida según las políticas de acceso y administración del sistema.
+        throw new UnsupportedOperationException("Pendiente de implementación");
     }
 
     public boolean estaActivo() {

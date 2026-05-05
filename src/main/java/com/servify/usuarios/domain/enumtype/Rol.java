@@ -1,4 +1,6 @@
 package com.servify.usuarios.domain.enumtype;
 
-public enum RolUsuario {
+public enum Rol {
+    ADMIN,
+    USUARIO
 }

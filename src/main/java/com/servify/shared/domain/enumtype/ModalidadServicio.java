@@ -1,4 +1,4 @@
-package com.servify.publicaciones.domain.enumtype;
+package com.servify.shared.domain.enumtype;
 
 
 /// enum que representa las modalidades de servicio que puede ofrecer un profesional,

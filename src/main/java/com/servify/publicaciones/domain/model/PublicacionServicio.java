@@ -1,8 +1,8 @@
 package com.servify.publicaciones.domain.model;
 
 import com.servify.publicaciones.domain.enumtype.EstadoPublicacion;
-import com.servify.publicaciones.domain.enumtype.ModalidadServicio;
-import com.servify.publicaciones.domain.valueobject.DisponibilidadHoraria;
+import com.servify.shared.domain.enumtype.ModalidadServicio;
+import com.servify.shared.domain.valueobject.DisponibilidadHoraria;
 import com.servify.shared.domain.model.BaseEntity;
 import com.servify.shared.domain.valueobject.Ubicacion;
 

@@ -1,4 +1,4 @@
-package com.servify.publicaciones.domain.valueobject;
+package com.servify.shared.domain.valueobject;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
