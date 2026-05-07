@@ -4,5 +4,6 @@ public enum EstadoPublicacion {
     ACTIVA,
     INACTIVA,
     PAUSADA,
+    BLOQUEADA,
     ELIMINADA
 }
