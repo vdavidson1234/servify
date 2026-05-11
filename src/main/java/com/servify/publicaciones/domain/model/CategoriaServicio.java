@@ -36,35 +36,43 @@ public class CategoriaServicio extends BaseEntity {
         return estado;
     }
 
+    // Devuelve true si la categoría está habilitada
     public boolean estaActiva() {
-        // TODO implementar verificación de categoría activa.
-        // Debe devolver true cuando la categoría esté habilitada
-        // para ser utilizada en nuevas publicaciones.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return EstadoCategoria.ACTIVA.equals(this.estado);
     }
 
+    // Actualiza el nombre validando que no sea nulo ni vacío
     public void actualizarNombre(String nombre) {
-        // TODO implementar actualización del nombre de la categoría.
-        // Debe validar que el nombre no sea nulo, vacío ni inválido,
-        // y aplicar la política de unicidad si corresponde en otra capa.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException("El nombre no puede ser nulo ni vacío.");
+        }
+        this.nombre = nombre.trim();
     }
 
+    // Actualiza la descripción validando longitud y contenido
     public void actualizarDescripcion(String descripcion) {
-        // TODO implementar actualización de la descripción de la categoría.
-        // Debe validar longitud y contenido según las reglas del negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (descripcion == null || descripcion.isBlank()) {
+            throw new IllegalArgumentException("La descripción no puede ser nula ni vacía.");
+        }
+        if (descripcion.length() > 500) {
+            throw new IllegalArgumentException("La descripción no puede superar los 500 caracteres.");
+        }
+        this.descripcion = descripcion.trim();
     }
 
+    // Cambia el estado a ACTIVA si no lo estaba ya
     public void activar() {
-        // TODO implementar activación de la categoría.
-        // Debe cambiar el estado a ACTIVA respetando las transiciones válidas.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoCategoria.ACTIVA.equals(this.estado)) {
+            throw new IllegalStateException("La categoría ya se encuentra activa.");
+        }
+        this.estado = EstadoCategoria.ACTIVA;
     }
 
+    // Cambia el estado a INACTIVA para impedir su uso en nuevas publicaciones
     public void desactivar() {
-        // TODO implementar desactivación de la categoría.
-        // Debe cambiar el estado a INACTIVA para impedir su uso en nuevas publicaciones.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoCategoria.INACTIVA.equals(this.estado)) {
+            throw new IllegalStateException("La categoría ya se encuentra inactiva.");
+        }
+        this.estado = EstadoCategoria.INACTIVA;
     }
 }
