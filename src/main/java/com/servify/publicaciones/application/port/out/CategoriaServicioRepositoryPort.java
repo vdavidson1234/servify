@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Puerto de salida para persistencia y consultas del agregado CategoriaServicio.
+ * Puerto de salida para persistencia y consultas de categorias de servicio.
  */
 public interface CategoriaServicioRepositoryPort {
 

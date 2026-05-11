@@ -2,6 +2,9 @@ package com.servify.publicaciones.application.dto;
 
 import java.util.UUID;
 
+/**
+ * DTO de comando para actualizar una categoria de servicio.
+ */
 public class ActualizarCategoriaServicioCommand {
 
     private UUID categoriaServicioId;

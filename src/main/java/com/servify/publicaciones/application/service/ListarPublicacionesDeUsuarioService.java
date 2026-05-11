@@ -8,6 +8,9 @@ import com.servify.publicaciones.domain.model.PublicacionServicio;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que lista publicaciones de un usuario.
+ */
 public class ListarPublicacionesDeUsuarioService implements ListarPublicacionesDeUsuarioUseCase {
 
     private final PublicacionServicioRepositoryPort publicacionServicioRepositoryPort;

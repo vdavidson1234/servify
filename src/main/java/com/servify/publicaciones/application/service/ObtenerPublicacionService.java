@@ -8,6 +8,9 @@ import com.servify.publicaciones.domain.model.PublicacionServicio;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que obtiene el detalle de una publicacion.
+ */
 public class ObtenerPublicacionService implements ObtenerPublicacionUseCase {
 
     private final PublicacionServicioRepositoryPort publicacionServicioRepositoryPort;

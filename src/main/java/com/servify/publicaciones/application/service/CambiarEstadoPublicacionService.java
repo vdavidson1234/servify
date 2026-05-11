@@ -9,6 +9,9 @@ import com.servify.publicaciones.domain.model.PublicacionServicio;
 
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que ejecuta el cambio de estado de publicacion.
+ */
 public class CambiarEstadoPublicacionService implements CambiarEstadoPublicacionUseCase {
 
     private final PublicacionServicioRepositoryPort publicacionServicioRepositoryPort;

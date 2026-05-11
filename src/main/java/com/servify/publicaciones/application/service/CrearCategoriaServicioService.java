@@ -8,6 +8,9 @@ import com.servify.publicaciones.domain.model.CategoriaServicio;
 
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que ejecuta el caso de uso de crear categoria.
+ */
 public class CrearCategoriaServicioService implements CrearCategoriaServicioUseCase {
 
     private final CategoriaServicioRepositoryPort categoriaServicioRepositoryPort;

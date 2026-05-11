@@ -11,6 +11,9 @@ import com.servify.publicaciones.domain.service.PoliticaCompatibilidadPublicacio
 
 import java.util.List;
 
+/**
+ * Servicio de aplicacion que coordina la busqueda de publicaciones compatibles.
+ */
 public class BuscarPublicacionesCompatiblesService implements BuscarPublicacionesCompatiblesUseCase {
 
     private final PublicacionServicioRepositoryPort publicacionServicioRepositoryPort;

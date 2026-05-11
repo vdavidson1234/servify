@@ -12,6 +12,9 @@ import com.servify.publicaciones.domain.service.ValidadorDisponibilidadHoraria;
 
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que ejecuta el caso de uso de crear publicacion.
+ */
 public class CrearPublicacionService implements CrearPublicacionUseCase {
 
     private final PublicacionServicioRepositoryPort publicacionServicioRepositoryPort;

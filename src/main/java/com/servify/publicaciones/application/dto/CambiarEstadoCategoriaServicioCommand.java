@@ -4,6 +4,9 @@ import com.servify.publicaciones.domain.enumtype.EstadoCategoria;
 
 import java.util.UUID;
 
+/**
+ * DTO de comando para cambiar el estado de una categoria de servicio.
+ */
 public class CambiarEstadoCategoriaServicioCommand {
 
     private UUID categoriaServicioId;

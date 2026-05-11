@@ -7,6 +7,9 @@ import com.servify.shared.domain.valueobject.Ubicacion;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * DTO de consulta para buscar publicaciones compatibles con un criterio.
+ */
 public class BuscarPublicacionesCompatiblesQuery {
 
     private UUID solicitudServicioId;

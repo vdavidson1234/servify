@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Puerto de salida para persistencia y consultas del agregado PublicacionServicio.
+ * Puerto de salida para persistencia y consultas de publicaciones de servicio.
  */
 public interface PublicacionServicioRepositoryPort {
 

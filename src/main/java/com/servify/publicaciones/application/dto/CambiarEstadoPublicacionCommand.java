@@ -4,6 +4,9 @@ import com.servify.publicaciones.domain.enumtype.EstadoPublicacion;
 
 import java.util.UUID;
 
+/**
+ * DTO de comando para cambiar el estado de una publicacion de servicio.
+ */
 public class CambiarEstadoPublicacionCommand {
 
     private UUID publicacionServicioId;

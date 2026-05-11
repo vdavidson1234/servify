@@ -1,5 +1,8 @@
 package com.servify.publicaciones.application.dto;
 
+/**
+ * DTO de comando para crear una nueva categoria de servicio.
+ */
 public class CrearCategoriaServicioCommand {
 
     private String nombre;

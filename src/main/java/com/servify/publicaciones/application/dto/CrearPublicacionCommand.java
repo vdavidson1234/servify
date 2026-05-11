@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * DTO de comando para crear una publicacion de servicio.
+ */
 public class CrearPublicacionCommand {
 
     private UUID usuarioId;

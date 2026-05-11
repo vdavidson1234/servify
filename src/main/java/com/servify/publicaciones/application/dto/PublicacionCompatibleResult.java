@@ -6,6 +6,9 @@ import com.servify.shared.domain.enumtype.ModalidadServicio;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * DTO de salida para una publicacion compatible con un criterio de busqueda.
+ */
 public class PublicacionCompatibleResult {
 
     private UUID publicacionServicioId;

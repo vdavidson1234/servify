@@ -5,6 +5,9 @@ import com.servify.publicaciones.domain.enumtype.EstadoCategoria;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * DTO de salida para exponer datos de una categoria de servicio.
+ */
 public class CategoriaServicioResult {
 
     private UUID id;

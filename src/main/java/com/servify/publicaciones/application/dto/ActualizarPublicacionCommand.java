@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * DTO de comando para actualizar los datos de una publicacion de servicio.
+ */
 public class ActualizarPublicacionCommand {
 
     private UUID publicacionServicioId;

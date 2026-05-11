@@ -10,6 +10,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * DTO de salida para exponer datos de una publicacion de servicio.
+ */
 public class PublicacionServicioResult {
 
     private UUID id;

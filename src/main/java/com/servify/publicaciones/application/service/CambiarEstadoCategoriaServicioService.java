@@ -9,6 +9,9 @@ import com.servify.publicaciones.domain.model.CategoriaServicio;
 
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que ejecuta el cambio de estado de categoria.
+ */
 public class CambiarEstadoCategoriaServicioService implements CambiarEstadoCategoriaServicioUseCase {
 
     private final CategoriaServicioRepositoryPort categoriaServicioRepositoryPort;

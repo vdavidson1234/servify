@@ -8,6 +8,9 @@ import com.servify.publicaciones.domain.model.CategoriaServicio;
 
 import java.util.UUID;
 
+/**
+ * Servicio de aplicacion que ejecuta el caso de uso de actualizar categoria.
+ */
 public class ActualizarCategoriaServicioService implements ActualizarCategoriaServicioUseCase {
 
     private final CategoriaServicioRepositoryPort categoriaServicioRepositoryPort;

@@ -7,6 +7,9 @@ import com.servify.publicaciones.domain.model.CategoriaServicio;
 
 import java.util.List;
 
+/**
+ * Servicio de aplicacion que lista categorias de servicio activas.
+ */
 public class ListarCategoriasActivasService implements ListarCategoriasActivasUseCase {
 
     private final CategoriaServicioRepositoryPort categoriaServicioRepositoryPort;
