@@ -1,5 +1,6 @@
 package com.servify.publicaciones.domain.model;
 
+
 import com.servify.publicaciones.domain.enumtype.EstadoPublicacion;
 import com.servify.shared.domain.enumtype.ModalidadServicio;
 import com.servify.shared.domain.valueobject.DisponibilidadHoraria;
@@ -83,98 +84,167 @@ public class PublicacionServicio extends BaseEntity {
         return estado;
     }
 
+    // Devuelve true si la publicación está habilitada
     public boolean estaActiva() {
-        // TODO implementar verificación de publicación activa.
-        // Debe devolver true cuando la publicación se encuentre habilitada
-        // para participar en el proceso de distribución de solicitudes.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return EstadoPublicacion.ACTIVA.equals(this.estado);
     }
 
+    // Verifica si la publicación pertenece al usuario indicado
     public boolean perteneceA(UUID usuarioId) {
-        // TODO implementar validación de pertenencia.
-        // Debe verificar si la publicación pertenece al usuario indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.usuarioId != null && this.usuarioId.equals(usuarioId);
     }
 
+    // Valida que la publicación pueda participar en distribución de solicitudes
     public boolean puedeParticiparEnDistribucion() {
-        // TODO implementar validación de participación en distribución.
-        // Debe verificar, como mínimo:
-        // - que la publicación esté activa
-        // - que su categoría esté activa
-        // - que tenga disponibilidad válida
-        // - que posea modalidad y ubicación coherentes para operar
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!estaActiva()) {
+            return false;
+        }
+        if (categoriaServicio == null || !categoriaServicio.estaActiva()) {
+            return false;
+        }
+        if (disponibilidadesHorarias == null || disponibilidadesHorarias.isEmpty()) {
+            return false;
+        }
+        boolean tieneDisponibilidadValida = disponibilidadesHorarias.stream()
+                .anyMatch(DisponibilidadHoraria::esRangoHorarioValido);
+        if (!tieneDisponibilidadValida) {
+            return false;
+        }
+        if (modalidadServicio == null) {
+            return false;
+        }
+        if ((ModalidadServicio.PRESENCIAL.equals(modalidadServicio) ||
+                ModalidadServicio.MIXTA.equals(modalidadServicio))
+                && (ubicacion == null || !ubicacion.esAptaParaBusquedaGeografica())) {
+            return false;
+        }
+        return true;
     }
 
+    // Actualiza el título validando que no sea nulo ni vacío
     public void actualizarTitulo(String titulo) {
-        // TODO implementar actualización de título.
-        // Debe validar que el título no sea nulo, vacío ni inválido
-        // según las reglas definidas por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (titulo == null || titulo.isBlank()) {
+            throw new IllegalArgumentException("El título no puede ser nulo ni vacío.");
+        }
+        if (titulo.length() > 100) {
+            throw new IllegalArgumentException("El título no puede superar los 100 caracteres.");
+        }
+        this.titulo = titulo.trim();
     }
 
+    // Actualiza la descripción validando longitud y contenido
     public void actualizarDescripcion(String descripcion) {
-        // TODO implementar actualización de descripción.
-        // Debe validar longitud y contenido según las reglas del negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (descripcion == null || descripcion.isBlank()) {
+            throw new IllegalArgumentException("La descripción no puede ser nula ni vacía.");
+        }
+        if (descripcion.length() > 1000) {
+            throw new IllegalArgumentException("La descripción no puede superar los 1000 caracteres.");
+        }
+        this.descripcion = descripcion.trim();
     }
 
+    // Actualiza la categoría validando que exista y esté activa
     public void actualizarCategoria(CategoriaServicio categoriaServicio) {
-        // TODO implementar actualización de categoría.
-        // Debe validar que la categoría exista y se encuentre disponible para uso.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (categoriaServicio == null) {
+            throw new IllegalArgumentException("La categoría no puede ser nula.");
+        }
+        if (!categoriaServicio.estaActiva()) {
+            throw new IllegalStateException("La categoría no está disponible para su uso.");
+        }
+        this.categoriaServicio = categoriaServicio;
     }
 
+    // Actualiza la modalidad validando que no sea nula
     public void actualizarModalidad(ModalidadServicio modalidadServicio) {
-        // TODO implementar actualización de modalidad.
-        // Debe validar que la modalidad informada sea compatible con la publicación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (modalidadServicio == null) {
+            throw new IllegalArgumentException("La modalidad no puede ser nula.");
+        }
+        this.modalidadServicio = modalidadServicio;
     }
 
+    // Actualiza la ubicación validando coherencia con la modalidad
     public void actualizarUbicacion(Ubicacion ubicacion) {
-        // TODO implementar actualización de ubicación.
-        // Debe validar que la ubicación sea suficiente para la operación
-        // según la modalidad del servicio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if ((ModalidadServicio.PRESENCIAL.equals(this.modalidadServicio) ||
+                ModalidadServicio.MIXTA.equals(this.modalidadServicio))) {
+            if (ubicacion == null || !ubicacion.esAptaParaBusquedaGeografica()) {
+                throw new IllegalArgumentException("La ubicación es requerida y debe ser válida para modalidad presencial o mixta.");
+            }
+        }
+        this.ubicacion = ubicacion;
     }
 
+    // Actualiza disponibilidades validando que no haya superposiciones
     public void actualizarDisponibilidades(List<DisponibilidadHoraria> disponibilidadesHorarias) {
-        // TODO implementar actualización de disponibilidades horarias.
-        // Debe validar que la lista no sea nula ni vacía, que las franjas sean válidas
-        // y que no existan superposiciones incompatibles.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (disponibilidadesHorarias == null || disponibilidadesHorarias.isEmpty()) {
+            throw new IllegalArgumentException("La lista de disponibilidades no puede ser nula ni vacía.");
+        }
+        for (DisponibilidadHoraria d : disponibilidadesHorarias) {
+            if (!d.esRangoHorarioValido()) {
+                throw new IllegalArgumentException("Una o más disponibilidades tienen un rango horario inválido.");
+            }
+        }
+        for (int i = 0; i < disponibilidadesHorarias.size(); i++) {
+            for (int j = i + 1; j < disponibilidadesHorarias.size(); j++) {
+                if (disponibilidadesHorarias.get(i).seSuperponeCon(disponibilidadesHorarias.get(j))) {
+                    throw new IllegalArgumentException("Existen disponibilidades horarias superpuestas.");
+                }
+            }
+        }
+        this.disponibilidadesHorarias = disponibilidadesHorarias;
     }
 
+    // Actualiza el precio validando que sea positivo
     public void actualizarPrecioBase(BigDecimal precioBase) {
-        // TODO implementar actualización de precio base.
-        // Debe validar que el precio sea válido, no negativo
-        // y cumpla las restricciones definidas por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (precioBase == null) {
+            throw new IllegalArgumentException("El precio base no puede ser nulo.");
+        }
+        if (precioBase.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El precio base no puede ser negativo.");
+        }
+        this.precioBase = precioBase;
     }
 
+    // Cambia el estado a ACTIVA verificando condiciones mínimas
     public void activar() {
-        // TODO implementar activación de publicación.
-        // Debe cambiar el estado a ACTIVA respetando las transiciones válidas
-        // y verificando que la publicación cumpla condiciones mínimas.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoPublicacion.ACTIVA.equals(this.estado)) {
+            throw new IllegalStateException("La publicación ya se encuentra activa.");
+        }
+        if (EstadoPublicacion.ELIMINADA.equals(this.estado)) {
+            throw new IllegalStateException("No se puede activar una publicación eliminada.");
+        }
+        if (!puedeParticiparEnDistribucion()) {
+            throw new IllegalStateException("La publicación no cumple las condiciones mínimas para activarse.");
+        }
+        this.estado = EstadoPublicacion.ACTIVA;
     }
 
+    // Cambia el estado a INACTIVA
     public void desactivar() {
-        // TODO implementar desactivación de publicación.
-        // Debe cambiar el estado para impedir que participe en nuevas distribuciones.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoPublicacion.INACTIVA.equals(this.estado)) {
+            throw new IllegalStateException("La publicación ya se encuentra inactiva.");
+        }
+        if (EstadoPublicacion.ELIMINADA.equals(this.estado)) {
+            throw new IllegalStateException("No se puede desactivar una publicación eliminada.");
+        }
+        this.estado = EstadoPublicacion.INACTIVA;
     }
 
+    // Cambia el estado a PAUSADA
     public void pausar() {
-        // TODO implementar pausa de publicación.
-        // Debe cambiar el estado a PAUSADA cuando corresponda
-        // según la lógica operativa definida por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoPublicacion.PAUSADA.equals(this.estado)) {
+            throw new IllegalStateException("La publicación ya se encuentra pausada.");
+        }
+        if (EstadoPublicacion.ELIMINADA.equals(this.estado)) {
+            throw new IllegalStateException("No se puede pausar una publicación eliminada.");
+        }
+        this.estado = EstadoPublicacion.PAUSADA;
     }
 
+    // Marca la publicación como ELIMINADA (baja lógica)
     public void eliminar() {
-        // TODO implementar baja lógica de publicación.
-        // Debe marcar la publicación como ELIMINADA sin perder trazabilidad histórica.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (EstadoPublicacion.ELIMINADA.equals(this.estado)) {
+            throw new IllegalStateException("La publicación ya se encuentra eliminada.");
+        }
+        this.estado = EstadoPublicacion.ELIMINADA;
     }
 }
