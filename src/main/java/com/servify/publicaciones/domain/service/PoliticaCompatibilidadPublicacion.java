@@ -8,51 +8,98 @@ import com.servify.shared.domain.valueobject.Ubicacion;
 
 public class PoliticaCompatibilidadPublicacion {
 
+    // Validación integral: publicación apta, categoría, modalidad, ubicación y disponibilidad compatibles
     public boolean esCompatible(PublicacionServicio publicacion,
                                 CategoriaServicio categoriaRequerida,
                                 ModalidadServicio modalidadRequerida,
                                 Ubicacion ubicacionRequerida,
                                 DisponibilidadHoraria disponibilidadRequerida) {
-        // TODO implementar validación integral de compatibilidad.
-        // Debe verificar, como mínimo:
-        // - que la publicación exista
-        // - que pueda participar en distribución
-        // - que la categoría de la publicación sea compatible con la requerida
-        // - que la modalidad del servicio sea compatible con la requerida
-        // - que la ubicación sea compatible según las reglas de cercanía
-        // - que exista al menos una disponibilidad horaria compatible
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacion == null) {
+            return false;
+        }
+        if (!publicacion.puedeParticiparEnDistribucion()) {
+            return false;
+        }
+        if (!esCompatiblePorCategoria(publicacion, categoriaRequerida)) {
+            return false;
+        }
+        if (!esCompatiblePorModalidad(publicacion, modalidadRequerida)) {
+            return false;
+        }
+        if (!esCompatiblePorUbicacion(publicacion, ubicacionRequerida)) {
+            return false;
+        }
+        if (!esCompatiblePorDisponibilidad(publicacion, disponibilidadRequerida)) {
+            return false;
+        }
+        return true;
     }
 
+    // Verifica si la categoría de la publicación coincide con la requerida
     public boolean esCompatiblePorCategoria(PublicacionServicio publicacion,
                                             CategoriaServicio categoriaRequerida) {
-        // TODO implementar compatibilidad por categoría.
-        // Debe verificar si la categoría de la publicación coincide con la categoría requerida
-        // o si existe algún criterio de equivalencia permitido por el negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacion == null || categoriaRequerida == null) {
+            return false;
+        }
+        return publicacion.getCategoriaServicio() != null
+                && publicacion.getCategoriaServicio().mismoIdQue(categoriaRequerida);
     }
 
+    // Verifica si la modalidad satisface la requerida (MIXTA cubre PRESENCIAL y VIRTUAL)
     public boolean esCompatiblePorModalidad(PublicacionServicio publicacion,
                                             ModalidadServicio modalidadRequerida) {
-        // TODO implementar compatibilidad por modalidad.
-        // Debe verificar si la modalidad de la publicación satisface la modalidad solicitada.
-        // Por ejemplo, contemplar si una modalidad MIXTA puede cubrir casos presenciales o virtuales.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacion == null || modalidadRequerida == null) {
+            return false;
+        }
+        ModalidadServicio modalidadPublicacion = publicacion.getModalidadServicio();
+        if (modalidadPublicacion == null) {
+            return false;
+        }
+        if (modalidadPublicacion.equals(modalidadRequerida)) {
+            return true;
+        }
+        if (ModalidadServicio.MIXTA.equals(modalidadPublicacion)) {
+            return ModalidadServicio.PRESENCIAL.equals(modalidadRequerida)
+                    || ModalidadServicio.VIRTUAL.equals(modalidadRequerida);
+        }
+        return false;
     }
 
+    // Verifica compatibilidad geográfica por ciudad y provincia, o por coordenadas
     public boolean esCompatiblePorUbicacion(PublicacionServicio publicacion,
                                             Ubicacion ubicacionRequerida) {
-        // TODO implementar compatibilidad geográfica.
-        // Debe verificar si la ubicación de la publicación resulta apta para atender
-        // la ubicación requerida según la lógica de cercanía definida por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacion == null || ubicacionRequerida == null) {
+            return false;
+        }
+        // Para modalidad VIRTUAL la ubicación no es relevante
+        if (ModalidadServicio.VIRTUAL.equals(publicacion.getModalidadServicio())) {
+            return true;
+        }
+        Ubicacion ubicacionPublicacion = publicacion.getUbicacion();
+        if (ubicacionPublicacion == null) {
+            return false;
+        }
+        // Compatibilidad por ciudad y provincia
+        boolean mismaCiudad = ubicacionPublicacion.getCiudad() != null
+                && ubicacionPublicacion.getCiudad().equalsIgnoreCase(ubicacionRequerida.getCiudad());
+        boolean mismaProvincia = ubicacionPublicacion.getProvincia() != null
+                && ubicacionPublicacion.getProvincia().equalsIgnoreCase(ubicacionRequerida.getProvincia());
+        return mismaCiudad && mismaProvincia;
     }
 
+    // Verifica si alguna disponibilidad de la publicación es compatible con la requerida
     public boolean esCompatiblePorDisponibilidad(PublicacionServicio publicacion,
                                                  DisponibilidadHoraria disponibilidadRequerida) {
-        // TODO implementar compatibilidad por disponibilidad.
-        // Debe verificar si alguna de las disponibilidades horarias de la publicación
-        // coincide o resulta compatible con la franja requerida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacion == null || disponibilidadRequerida == null) {
+            return false;
+        }
+        if (publicacion.getDisponibilidadesHorarias() == null
+                || publicacion.getDisponibilidadesHorarias().isEmpty()) {
+            return false;
+        }
+        return publicacion.getDisponibilidadesHorarias().stream()
+                .anyMatch(d -> d.getDiaSemana().equals(disponibilidadRequerida.getDiaSemana())
+                        && !d.getHoraDesde().isAfter(disponibilidadRequerida.getHoraDesde())
+                        && !d.getHoraHasta().isBefore(disponibilidadRequerida.getHoraHasta()));
     }
 }
