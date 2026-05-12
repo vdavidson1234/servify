@@ -1,4 +1,8 @@
 package com.servify.solicitudes.application.port.in;
 
-public class ResponderDistribucionSolicitudUseCase {
+import com.servify.solicitudes.application.dto.ResponderDistribucionSolicitudCommand;
+
+public interface ResponderDistribucionSolicitudUseCase {
+
+    void responder(ResponderDistribucionSolicitudCommand command);
 }
