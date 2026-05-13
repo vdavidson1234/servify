@@ -1,6 +1,7 @@
 package com.servify.publicaciones.application.service;
 
 import com.servify.publicaciones.application.dto.ActualizarPublicacionCommand;
+import com.servify.publicaciones.application.dto.CategoriaServicioResult;
 import com.servify.publicaciones.application.dto.PublicacionServicioResult;
 import com.servify.publicaciones.application.port.in.ActualizarPublicacionUseCase;
 import com.servify.publicaciones.application.port.out.CategoriaServicioRepositoryPort;
@@ -31,54 +32,107 @@ public class ActualizarPublicacionService implements ActualizarPublicacionUseCas
 
     @Override
     public PublicacionServicioResult actualizar(ActualizarPublicacionCommand command) {
-        // TODO implementar actualizacion de publicacion.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - recuperar la publicacion existente
-        // - validar que pertenezca al usuario indicado
-        // - obtener la nueva categoria si fue informada
-        // - aplicar cambios invocando metodos del dominio
-        // - validar disponibilidades si fueron modificadas
-        // - persistir la publicacion actualizada
-        // - devolver PublicacionServicioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Valida command, verifica pertenencia, aplica cambios, persiste y retorna resultado
+        if (command == null || command.getPublicacionServicioId() == null) {
+            throw new IllegalArgumentException("El comando de actualización no puede ser nulo.");
+        }
+        PublicacionServicio publicacion = obtenerPublicacionExistente(command.getPublicacionServicioId());
+        validarPertenencia(publicacion, command.getUsuarioId());
+        validarDisponibilidades(command);
+        Optional<CategoriaServicio> categoria = obtenerCategoriaSiCorresponde(command.getCategoriaServicioId());
+        aplicarActualizaciones(publicacion, command, categoria);
+        PublicacionServicio publicacionGuardada = publicacionServicioRepositoryPort.guardar(publicacion);
+        return construirResultado(publicacionGuardada);
     }
 
+    // Busca la publicación por ID y lanza excepción si no existe
     protected PublicacionServicio obtenerPublicacionExistente(UUID publicacionServicioId) {
-        // TODO implementar busqueda obligatoria de publicacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return publicacionServicioRepositoryPort.buscarPorId(publicacionServicioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la publicación con id: " + publicacionServicioId));
     }
 
-    protected void validarPertenencia(PublicacionServicio publicacionServicio,
-                                      UUID usuarioId) {
-        // TODO implementar validacion de pertenencia.
-        // Debe usar PublicacionServicio.perteneceA(usuarioId).
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+    // Verifica que la publicación pertenezca al usuario indicado
+    protected void validarPertenencia(PublicacionServicio publicacionServicio, UUID usuarioId) {
+        if (!publicacionServicio.perteneceA(usuarioId)) {
+            throw new IllegalStateException("La publicación no pertenece al usuario indicado.");
+        }
     }
 
+    // Busca la categoría si fue informada, validando que exista y esté activa
     protected Optional<CategoriaServicio> obtenerCategoriaSiCorresponde(UUID categoriaServicioId) {
-        // TODO implementar busqueda opcional de categoria.
-        // Si se informa una categoria nueva, debe existir y estar activa.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (categoriaServicioId == null) {
+            return Optional.empty();
+        }
+        CategoriaServicio categoria = categoriaServicioRepositoryPort.buscarPorId(categoriaServicioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la categoría con id: " + categoriaServicioId));
+        if (!categoria.estaActiva()) {
+            throw new IllegalStateException("La categoría indicada no está activa.");
+        }
+        return Optional.of(categoria);
     }
 
+    // Aplica cada cambio informado invocando los métodos del dominio
     protected void aplicarActualizaciones(PublicacionServicio publicacionServicio,
                                           ActualizarPublicacionCommand command,
                                           Optional<CategoriaServicio> categoriaServicio) {
-        // TODO implementar aplicacion de cambios sobre el agregado.
-        // Debe invocar los metodos actualizarTitulo, actualizarDescripcion,
-        // actualizarCategoria, actualizarModalidad, actualizarUbicacion,
-        // actualizarDisponibilidades y actualizarPrecioBase segun corresponda.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (command.getTitulo() != null && !command.getTitulo().isBlank()) {
+            publicacionServicio.actualizarTitulo(command.getTitulo());
+        }
+        if (command.getDescripcion() != null && !command.getDescripcion().isBlank()) {
+            publicacionServicio.actualizarDescripcion(command.getDescripcion());
+        }
+        categoriaServicio.ifPresent(publicacionServicio::actualizarCategoria);
+        if (command.getModalidadServicio() != null) {
+            publicacionServicio.actualizarModalidad(command.getModalidadServicio());
+        }
+        if (command.getUbicacion() != null) {
+            publicacionServicio.actualizarUbicacion(command.getUbicacion());
+        }
+        if (command.getDisponibilidadesHorarias() != null && !command.getDisponibilidadesHorarias().isEmpty()) {
+            publicacionServicio.actualizarDisponibilidades(command.getDisponibilidadesHorarias());
+        }
+        if (command.getPrecioBase() != null) {
+            publicacionServicio.actualizarPrecioBase(command.getPrecioBase());
+        }
     }
 
+    // Valida las disponibilidades horarias si fueron informadas
     protected void validarDisponibilidades(ActualizarPublicacionCommand command) {
-        // TODO implementar validacion de disponibilidades cuando sean informadas.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (command.getDisponibilidadesHorarias() == null || command.getDisponibilidadesHorarias().isEmpty()) {
+            return;
+        }
+        if (!validadorDisponibilidadHoraria.sonValidas(command.getDisponibilidadesHorarias())) {
+            throw new IllegalArgumentException("Las disponibilidades horarias informadas no son válidas o tienen superposiciones.");
+        }
     }
 
+    // Mapea la entidad de dominio al DTO de salida
     protected PublicacionServicioResult construirResultado(PublicacionServicio publicacionServicio) {
-        // TODO implementar mapeo con PublicacionServicioResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        CategoriaServicioResult categoriaResult = CategoriaServicioResult.builder()
+                .id(publicacionServicio.getCategoriaServicio().getId())
+                .nombre(publicacionServicio.getCategoriaServicio().getNombre())
+                .descripcion(publicacionServicio.getCategoriaServicio().getDescripcion())
+                .estado(publicacionServicio.getCategoriaServicio().getEstado())
+                .fechaCreacion(publicacionServicio.getCategoriaServicio().getFechaCreacion())
+                .fechaUltimaModificacion(publicacionServicio.getCategoriaServicio().getFechaUltimaModificacion())
+                .build();
+
+        return PublicacionServicioResult.builder()
+                .id(publicacionServicio.getId())
+                .usuarioId(publicacionServicio.getUsuarioId())
+                .categoriaServicio(categoriaResult)
+                .titulo(publicacionServicio.getTitulo())
+                .descripcion(publicacionServicio.getDescripcion())
+                .modalidadServicio(publicacionServicio.getModalidadServicio())
+                .ubicacion(publicacionServicio.getUbicacion())
+                .disponibilidadesHorarias(publicacionServicio.getDisponibilidadesHorarias())
+                .precioBase(publicacionServicio.getPrecioBase())
+                .estado(publicacionServicio.getEstado())
+                .puedeParticiparEnDistribucion(publicacionServicio.puedeParticiparEnDistribucion())
+                .fechaCreacion(publicacionServicio.getFechaCreacion())
+                .fechaUltimaModificacion(publicacionServicio.getFechaUltimaModificacion())
+                .build();
     }
 }
