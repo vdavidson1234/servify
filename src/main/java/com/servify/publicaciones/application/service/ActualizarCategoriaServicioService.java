@@ -21,30 +21,59 @@ public class ActualizarCategoriaServicioService implements ActualizarCategoriaSe
 
     @Override
     public CategoriaServicioResult actualizar(ActualizarCategoriaServicioCommand command) {
-        // TODO implementar actualizacion de categoria.
-        // Debe:
-        // - validar command
-        // - recuperar categoria existente
-        // - validar unicidad de nombre si cambia
-        // - aplicar actualizaciones mediante metodos del dominio
-        // - persistir la categoria
-        // - devolver CategoriaServicioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Valida command, aplica cambios, persiste y retorna resultado
+        if (command == null || command.getCategoriaServicioId() == null) {
+            throw new IllegalArgumentException("El comando de actualización no puede ser nulo.");
+        }
+        CategoriaServicio categoriaServicio = obtenerCategoriaExistente(command.getCategoriaServicioId());
+        validarUnicidadNombre(categoriaServicio, command);
+        aplicarActualizaciones(categoriaServicio, command);
+        CategoriaServicio categoriaGuardada = categoriaServicioRepositoryPort.guardar(categoriaServicio);
+        return construirResultado(categoriaGuardada);
     }
 
+    // Busca la categoría por ID y lanza excepción si no existe
     protected CategoriaServicio obtenerCategoriaExistente(UUID categoriaServicioId) {
-        // TODO implementar busqueda obligatoria de categoria.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return categoriaServicioRepositoryPort.buscarPorId(categoriaServicioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la categoría con id: " + categoriaServicioId));
     }
 
+    // Aplica cambios de nombre y descripción si vienen informados
     protected void aplicarActualizaciones(CategoriaServicio categoriaServicio,
                                           ActualizarCategoriaServicioCommand command) {
-        // TODO implementar aplicacion de cambios de nombre y descripcion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (command.getNombre() != null && !command.getNombre().isBlank()) {
+            categoriaServicio.actualizarNombre(command.getNombre());
+        }
+        if (command.getDescripcion() != null && !command.getDescripcion().isBlank()) {
+            categoriaServicio.actualizarDescripcion(command.getDescripcion());
+        }
     }
 
+    // Mapea la entidad de dominio al DTO de salida
     protected CategoriaServicioResult construirResultado(CategoriaServicio categoriaServicio) {
-        // TODO implementar mapeo con CategoriaServicioResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return CategoriaServicioResult.builder()
+                .id(categoriaServicio.getId())
+                .nombre(categoriaServicio.getNombre())
+                .descripcion(categoriaServicio.getDescripcion())
+                .estado(categoriaServicio.getEstado())
+                .fechaCreacion(categoriaServicio.getFechaCreacion())
+                .fechaUltimaModificacion(categoriaServicio.getFechaUltimaModificacion())
+                .build();
+    }
+
+    // Valida que el nuevo nombre no esté en uso por otra categoría
+    private void validarUnicidadNombre(CategoriaServicio categoriaServicio,
+                                       ActualizarCategoriaServicioCommand command) {
+        if (command.getNombre() == null || command.getNombre().isBlank()) {
+            return;
+        }
+        if (command.getNombre().equalsIgnoreCase(categoriaServicio.getNombre())) {
+            return;
+        }
+        if (categoriaServicioRepositoryPort.existePorNombre(command.getNombre())) {
+            throw new IllegalStateException(
+                    "Ya existe una categoría con el nombre: " + command.getNombre());
+        }
     }
 }
