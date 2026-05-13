@@ -6,6 +6,7 @@ import com.servify.publicaciones.application.port.out.CategoriaServicioRepositor
 import com.servify.publicaciones.domain.model.CategoriaServicio;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de aplicacion que lista categorias de servicio activas.
@@ -18,15 +19,24 @@ public class ListarCategoriasActivasService implements ListarCategoriasActivasUs
         this.categoriaServicioRepositoryPort = categoriaServicioRepositoryPort;
     }
 
+    // Delega en el repositorio y mapea cada categoría al DTO de salida
     @Override
     public List<CategoriaServicioResult> listarActivas() {
-        // TODO implementar listado de categorias activas.
-        // Debe delegar en CategoriaServicioRepositoryPort y mapear cada resultado.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return categoriaServicioRepositoryPort.listarActivas()
+                .stream()
+                .map(this::construirResultado)
+                .collect(Collectors.toList());
     }
 
+    // Mapea la entidad de dominio al DTO de salida
     protected CategoriaServicioResult construirResultado(CategoriaServicio categoriaServicio) {
-        // TODO implementar mapeo con CategoriaServicioResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return CategoriaServicioResult.builder()
+                .id(categoriaServicio.getId())
+                .nombre(categoriaServicio.getNombre())
+                .descripcion(categoriaServicio.getDescripcion())
+                .estado(categoriaServicio.getEstado())
+                .fechaCreacion(categoriaServicio.getFechaCreacion())
+                .fechaUltimaModificacion(categoriaServicio.getFechaUltimaModificacion())
+                .build();
     }
 }
