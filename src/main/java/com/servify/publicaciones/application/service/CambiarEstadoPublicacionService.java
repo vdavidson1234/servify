@@ -1,6 +1,7 @@
 package com.servify.publicaciones.application.service;
 
 import com.servify.publicaciones.application.dto.CambiarEstadoPublicacionCommand;
+import com.servify.publicaciones.application.dto.CategoriaServicioResult;
 import com.servify.publicaciones.application.dto.PublicacionServicioResult;
 import com.servify.publicaciones.application.port.in.CambiarEstadoPublicacionUseCase;
 import com.servify.publicaciones.application.port.out.PublicacionServicioRepositoryPort;
@@ -22,39 +23,81 @@ public class CambiarEstadoPublicacionService implements CambiarEstadoPublicacion
 
     @Override
     public PublicacionServicioResult cambiarEstado(CambiarEstadoPublicacionCommand command) {
-        // TODO implementar cambio unificado de estado de publicacion.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - recuperar la publicacion existente
-        // - validar pertenencia o permisos administrativos segun estado destino
-        // - aplicar transicion ACTIVA, INACTIVA, PAUSADA, BLOQUEADA o ELIMINADA
-        // - persistir mediante PublicacionServicioRepositoryPort
-        // - devolver PublicacionServicioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Valida command, verifica permisos, aplica transición, persiste y retorna resultado
+        if (command == null || command.getPublicacionServicioId() == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo.");
+        }
+        if (command.getEstadoDestino() == null) {
+            throw new IllegalArgumentException("El estado destino no puede ser nulo.");
+        }
+        PublicacionServicio publicacion = obtenerPublicacionExistente(command.getPublicacionServicioId());
+        validarCambioPermitido(publicacion, command);
+        aplicarEstadoDestino(publicacion, command.getEstadoDestino());
+        PublicacionServicio publicacionGuardada = publicacionServicioRepositoryPort.guardar(publicacion);
+        return construirResultado(publicacionGuardada);
     }
 
+    // Busca la publicación por ID y lanza excepción si no existe
     protected PublicacionServicio obtenerPublicacionExistente(UUID publicacionServicioId) {
-        // TODO implementar busqueda obligatoria de publicacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return publicacionServicioRepositoryPort.buscarPorId(publicacionServicioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la publicación con id: " + publicacionServicioId));
     }
 
+    // Valida permisos: BLOQUEADA es solo administrativa, el resto requiere pertenencia
     protected void validarCambioPermitido(PublicacionServicio publicacionServicio,
                                           CambiarEstadoPublicacionCommand command) {
-        // TODO implementar validacion de permisos y transicion.
-        // Debe diferenciar acciones del publicador y acciones administrativas,
-        // especialmente para el estado BLOQUEADA.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (EstadoPublicacion.BLOQUEADA.equals(command.getEstadoDestino())) {
+            // Acción administrativa: no requiere validar pertenencia al usuario
+            return;
+        }
+        if (command.getUsuarioId() == null) {
+            throw new IllegalArgumentException("El usuarioId es requerido para esta operación.");
+        }
+        if (!publicacionServicio.perteneceA(command.getUsuarioId())) {
+            throw new IllegalStateException("La publicación no pertenece al usuario indicado.");
+        }
     }
 
+    // Centraliza la transición de estado despachando al método de dominio correspondiente
     protected void aplicarEstadoDestino(PublicacionServicio publicacionServicio,
                                         EstadoPublicacion estadoDestino) {
-        // TODO implementar despacho de transicion de estado.
-        // Debe centralizar activacion, desactivacion, pausa, bloqueo y baja logica.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        switch (estadoDestino) {
+            case ACTIVA -> publicacionServicio.activar();
+            case INACTIVA -> publicacionServicio.desactivar();
+            case PAUSADA -> publicacionServicio.pausar();
+            case ELIMINADA -> publicacionServicio.eliminar();
+            case BLOQUEADA -> throw new UnsupportedOperationException(
+                    "El bloqueo de publicaciones requiere implementación administrativa específica.");
+            default -> throw new IllegalArgumentException("Estado destino no soportado: " + estadoDestino);
+        }
     }
 
+    // Mapea la entidad de dominio al DTO de salida
     protected PublicacionServicioResult construirResultado(PublicacionServicio publicacionServicio) {
-        // TODO implementar mapeo con PublicacionServicioResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        CategoriaServicioResult categoriaResult = CategoriaServicioResult.builder()
+                .id(publicacionServicio.getCategoriaServicio().getId())
+                .nombre(publicacionServicio.getCategoriaServicio().getNombre())
+                .descripcion(publicacionServicio.getCategoriaServicio().getDescripcion())
+                .estado(publicacionServicio.getCategoriaServicio().getEstado())
+                .fechaCreacion(publicacionServicio.getCategoriaServicio().getFechaCreacion())
+                .fechaUltimaModificacion(publicacionServicio.getCategoriaServicio().getFechaUltimaModificacion())
+                .build();
+
+        return PublicacionServicioResult.builder()
+                .id(publicacionServicio.getId())
+                .usuarioId(publicacionServicio.getUsuarioId())
+                .categoriaServicio(categoriaResult)
+                .titulo(publicacionServicio.getTitulo())
+                .descripcion(publicacionServicio.getDescripcion())
+                .modalidadServicio(publicacionServicio.getModalidadServicio())
+                .ubicacion(publicacionServicio.getUbicacion())
+                .disponibilidadesHorarias(publicacionServicio.getDisponibilidadesHorarias())
+                .precioBase(publicacionServicio.getPrecioBase())
+                .estado(publicacionServicio.getEstado())
+                .puedeParticiparEnDistribucion(publicacionServicio.puedeParticiparEnDistribucion())
+                .fechaCreacion(publicacionServicio.getFechaCreacion())
+                .fechaUltimaModificacion(publicacionServicio.getFechaUltimaModificacion())
+                .build();
     }
 }
