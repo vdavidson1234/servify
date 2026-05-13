@@ -22,30 +22,45 @@ public class CambiarEstadoCategoriaServicioService implements CambiarEstadoCateg
 
     @Override
     public CategoriaServicioResult cambiarEstado(CambiarEstadoCategoriaServicioCommand command) {
-        // TODO implementar cambio unificado de estado de categoria.
-        // Debe:
-        // - validar command
-        // - recuperar categoria existente
-        // - validar transicion permitida
-        // - aplicar ACTIVA o INACTIVA desde un unico use case
-        // - persistir la categoria
-        // - devolver CategoriaServicioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Valida command, recupera categoría, aplica transición, persiste y retorna resultado
+        if (command == null || command.getCategoriaServicioId() == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo.");
+        }
+        if (command.getEstadoDestino() == null) {
+            throw new IllegalArgumentException("El estado destino no puede ser nulo.");
+        }
+        CategoriaServicio categoriaServicio = obtenerCategoriaExistente(command.getCategoriaServicioId());
+        aplicarEstadoDestino(categoriaServicio, command.getEstadoDestino());
+        CategoriaServicio categoriaGuardada = categoriaServicioRepositoryPort.guardar(categoriaServicio);
+        return construirResultado(categoriaGuardada);
     }
 
+    // Busca la categoría por ID y lanza excepción si no existe
     protected CategoriaServicio obtenerCategoriaExistente(UUID categoriaServicioId) {
-        // TODO implementar busqueda obligatoria de categoria.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return categoriaServicioRepositoryPort.buscarPorId(categoriaServicioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró la categoría con id: " + categoriaServicioId));
     }
 
+    // Despacha la transición de estado según el destino indicado
     protected void aplicarEstadoDestino(CategoriaServicio categoriaServicio,
                                         EstadoCategoria estadoDestino) {
-        // TODO implementar despacho de transicion de categoria.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        switch (estadoDestino) {
+            case ACTIVA -> categoriaServicio.activar();
+            case INACTIVA -> categoriaServicio.desactivar();
+            default -> throw new IllegalArgumentException("Estado destino no soportado: " + estadoDestino);
+        }
     }
 
+    // Mapea la entidad de dominio al DTO de salida
     protected CategoriaServicioResult construirResultado(CategoriaServicio categoriaServicio) {
-        // TODO implementar mapeo con CategoriaServicioResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return CategoriaServicioResult.builder()
+                .id(categoriaServicio.getId())
+                .nombre(categoriaServicio.getNombre())
+                .descripcion(categoriaServicio.getDescripcion())
+                .estado(categoriaServicio.getEstado())
+                .fechaCreacion(categoriaServicio.getFechaCreacion())
+                .fechaUltimaModificacion(categoriaServicio.getFechaUltimaModificacion())
+                .build();
     }
 }
