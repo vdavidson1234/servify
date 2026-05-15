@@ -1,14 +1,24 @@
 package com.servify.usuarios.domain.model;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.servify.shared.domain.exception.BusinessRuleException;
+import com.servify.shared.domain.exception.ValidationException;
 import com.servify.shared.domain.model.BaseEntity;
 import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 import com.servify.usuarios.domain.enumtype.EstadoValidacionIdentidad;
 import com.servify.usuarios.domain.enumtype.Rol;
 import com.servify.usuarios.domain.valueobject.Contacto;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
+/**
+ * Entidad de dominio que representa una cuenta de usuario.
+ *
+ * Usuario concentra la identidad de acceso, el rol, el estado de la cuenta,
+ * el estado de validacion de identidad y la asociacion con PerfilUsuario.
+ * Los casos de uso deben pedirle a esta entidad que cambie de estado, en vez de
+ * modificar sus atributos directamente.
+ */
 public class Usuario extends BaseEntity {
 
     private Contacto contacto;
@@ -21,6 +31,9 @@ public class Usuario extends BaseEntity {
     protected Usuario() {
     }
 
+    /**
+     * Crea un usuario con contacto, rol, estado, validacion de identidad y perfil asociado.
+     */
     public Usuario(UUID id,
                    Contacto contacto,
                    Rol rol,
@@ -29,12 +42,12 @@ public class Usuario extends BaseEntity {
                    PerfilUsuario perfil,
                    LocalDateTime fechaRegistro) {
         super(id);
-        this.contacto = contacto;
-        this.rol = rol;
-        this.estado = estado;
-        this.estadoValidacionIdentidad = estadoValidacionIdentidad;
-        this.perfil = perfil;
-        this.fechaRegistro = fechaRegistro;
+        this.contacto = validarContacto(contacto);
+        this.rol = validarRol(rol);
+        this.estado = validarEstado(estado);
+        this.estadoValidacionIdentidad = validarEstadoValidacionIdentidad(estadoValidacionIdentidad);
+        this.perfil = validarPerfilAsociado(perfil);
+        this.fechaRegistro = fechaRegistro != null ? fechaRegistro : LocalDateTime.now();
     }
 
     public Rol getRol() {
@@ -42,7 +55,7 @@ public class Usuario extends BaseEntity {
     }
 
     public void setRol(Rol rol) {
-        this.rol = rol;
+        actualizarRol(rol);
     }
 
     public Contacto getContacto() {
@@ -66,130 +79,183 @@ public class Usuario extends BaseEntity {
     }
 
     public boolean esAdmin() {
-        // TODO implementar verificación de rol administrador.
-        // Debe devolver true cuando el usuario posea rol ADMIN.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Devuelve true cuando el usuario posee rol ADMIN.
+        return Rol.ADMIN == rol;
     }
 
     public boolean esUsuarioComun() {
-        // TODO implementar verificación de rol usuario común.
-        // Debe devolver true cuando el usuario posea rol USUARIO.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Devuelve true cuando el usuario posee rol USUARIO.
+        return Rol.USUARIO == rol;
     }
 
     public void actualizarRol(Rol rol) {
-        // TODO implementar actualización de rol.
-        // Debe validar que el nuevo rol no sea nulo y que la transición
-        // sea válida según las políticas de acceso y administración del sistema.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Impide que la entidad quede con un rol nulo o invalido.
+        this.rol = validarRol(rol);
     }
 
     public boolean estaActivo() {
-        // TODO implementar verificación de estado activo.
-        // Debe devolver true únicamente cuando el estado del usuario
-        // permita operar normalmente dentro de la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Indica si la cuenta esta habilitada para operar normalmente.
+        return EstadoUsuario.ACTIVO == estado;
     }
 
     public boolean estaSuspendido() {
-        // TODO implementar verificación de estado suspendido.
-        // Debe devolver true cuando el usuario tenga una restricción temporal
-        // aplicada por administración o por reglas del sistema.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Indica si la cuenta tiene una restriccion temporal.
+        return EstadoUsuario.SUSPENDIDO == estado;
     }
 
     public boolean estaBloqueado() {
-        // TODO implementar verificación de estado bloqueado.
-        // Debe devolver true cuando el usuario esté inhabilitado para operar
-        // por una medida más severa o definitiva.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Indica si la cuenta esta inhabilitada por una medida mas severa.
+        return EstadoUsuario.BLOQUEADO == estado;
     }
 
     public boolean tienePerfilCompleto() {
-        // TODO implementar validación de perfil completo.
-        // Debe verificar si el perfil asociado existe y cumple las condiciones
-        // mínimas exigidas por la plataforma para operar como prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Consume la marca calculada sobre el perfil asociado.
+        return perfil != null && Boolean.TRUE.equals(perfil.getPerfilCompleto());
     }
 
     public boolean puedePublicarServicios() {
-        // TODO implementar validación integral para publicación de servicios.
-        // Debe verificar, como mínimo:
-        // - que el usuario esté habilitado/activo,
-        // - que el perfil esté completo,
-        // - y que la identidad esté validada si la versión/configuración lo exige.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Regla resumida para publicacion: activo, perfil completo e identidad habilitada.
+        return estaActivo()
+                && tienePerfilCompleto()
+                && (identidadValidada() || EstadoValidacionIdentidad.NO_REQUERIDA == estadoValidacionIdentidad);
     }
 
     public boolean identidadValidada() {
-        // TODO implementar verificación de identidad validada.
-        // Debe devolver true cuando el estado de validación de identidad
-        // indique que la validación fue aprobada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Devuelve true solo cuando la validacion fue aprobada.
+        return EstadoValidacionIdentidad.VALIDADA == estadoValidacionIdentidad;
     }
 
     public void actualizarEmail(String email) {
-        // TODO implementar actualización de email.
-        // Debe validar el nuevo email, construir o actualizar el value object Contacto
-        // y aplicar las reglas necesarias para evitar estados inválidos.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Preserva el telefono actual y reconstruye el value object Contacto.
+        Contacto nuevoContacto = new Contacto(
+                normalizarTextoObligatorio(email, "El email es obligatorio"),
+                contacto != null ? contacto.getTelefono() : null
+        );
+
+        this.contacto = validarContacto(nuevoContacto);
     }
 
     public void actualizarTelefono(String telefono) {
-        // TODO implementar actualización de teléfono.
-        // Debe actualizar el value object Contacto preservando el email actual
-        // y validando el formato si el negocio lo requiere.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Preserva el email actual y actualiza el telefono como dato opcional.
+        String emailActual = contacto != null ? contacto.getEmail() : null;
+        Contacto nuevoContacto = new Contacto(emailActual, normalizarTextoOpcional(telefono));
+
+        this.contacto = validarContacto(nuevoContacto);
     }
 
     public void asociarPerfil(PerfilUsuario perfil) {
-        // TODO implementar asociación de perfil al usuario.
-        // Debe validar que el perfil no sea nulo y que corresponda al mismo usuario
-        // antes de establecer la relación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Verifica que el perfil exista y que pertenezca al mismo usuario antes de asociarlo.
+        this.perfil = validarPerfilAsociado(perfil);
     }
 
     public void marcarIdentidadComoValidada() {
-        // TODO implementar cambio de estado de validación de identidad a VALIDADA.
-        // Debe aplicar las verificaciones previas necesarias según el flujo definido.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado de validacion a VALIDADA.
+        this.estadoValidacionIdentidad = EstadoValidacionIdentidad.VALIDADA;
     }
 
     public void marcarIdentidadComoPendiente() {
-        // TODO implementar cambio de estado de validación de identidad a PENDIENTE.
-        // Debe utilizarse cuando el proceso de validación esté iniciado pero no resuelto.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado de validacion a PENDIENTE.
+        this.estadoValidacionIdentidad = EstadoValidacionIdentidad.PENDIENTE;
     }
 
     public void marcarIdentidadComoRechazada() {
-        // TODO implementar cambio de estado de validación de identidad a RECHAZADA.
-        // Debe utilizarse cuando la validación falle o sea denegada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado de validacion a RECHAZADA.
+        this.estadoValidacionIdentidad = EstadoValidacionIdentidad.RECHAZADA;
     }
 
     public void suspender() {
-        // TODO implementar suspensión del usuario.
-        // Debe cambiar el estado a SUSPENDIDO respetando las reglas de transición válidas.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado a SUSPENDIDO respetando las reglas de transicion.
+        if (estaBloqueado()) {
+            throw new BusinessRuleException("No se puede suspender un usuario bloqueado");
+        }
+
+        this.estado = EstadoUsuario.SUSPENDIDO;
     }
 
     public void bloquear() {
-        // TODO implementar bloqueo del usuario.
-        // Debe cambiar el estado a BLOQUEADO respetando las reglas de transición válidas.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado a BLOQUEADO.
+        this.estado = EstadoUsuario.BLOQUEADO;
     }
 
     public void activar() {
-        // TODO implementar activación del usuario.
-        // Debe cambiar el estado a ACTIVO solo si la transición es válida
-        // según la política de administración y negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado a ACTIVO solo si la transicion es valida.
+        if (estaBloqueado()) {
+            throw new BusinessRuleException("No se puede activar un usuario bloqueado");
+        }
+
+        this.estado = EstadoUsuario.ACTIVO;
     }
 
     public void desactivar() {
-        // TODO implementar desactivación del usuario.
-        // Debe cambiar el estado a INACTIVO cuando corresponda
-        // según las reglas definidas por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cambia el estado a INACTIVO cuando la transicion es valida.
+        if (estaBloqueado()) {
+            throw new BusinessRuleException("No se puede desactivar un usuario bloqueado");
+        }
+
+        this.estado = EstadoUsuario.INACTIVO;
+    }
+
+    private Contacto validarContacto(Contacto contacto) {
+        if (contacto == null) {
+            throw new ValidationException("El contacto es obligatorio");
+        }
+
+        if (!contacto.emailValido()) {
+            throw new ValidationException("El email del contacto no es valido");
+        }
+
+        return contacto;
+    }
+
+    private Rol validarRol(Rol rol) {
+        if (rol == null) {
+            throw new ValidationException("El rol es obligatorio");
+        }
+
+        return rol;
+    }
+
+    private EstadoUsuario validarEstado(EstadoUsuario estado) {
+        if (estado == null) {
+            throw new ValidationException("El estado del usuario es obligatorio");
+        }
+
+        return estado;
+    }
+
+    private EstadoValidacionIdentidad validarEstadoValidacionIdentidad(EstadoValidacionIdentidad estadoValidacionIdentidad) {
+        if (estadoValidacionIdentidad == null) {
+            throw new ValidationException("El estado de validacion de identidad es obligatorio");
+        }
+
+        return estadoValidacionIdentidad;
+    }
+
+    private PerfilUsuario validarPerfilAsociado(PerfilUsuario perfil) {
+        if (perfil == null) {
+            return null;
+        }
+
+        if (getId() == null || perfil.getUsuarioId() == null || !getId().equals(perfil.getUsuarioId())) {
+            throw new BusinessRuleException("El perfil no corresponde al usuario");
+        }
+
+        return perfil;
+    }
+
+    private String normalizarTextoOpcional(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+
+        return valor.trim();
+    }
+
+    private String normalizarTextoObligatorio(String valor, String mensajeError) {
+        if (valor == null || valor.isBlank()) {
+            throw new ValidationException(mensajeError);
+        }
+
+        return valor.trim();
     }
 }

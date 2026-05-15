@@ -1,5 +1,9 @@
 package com.servify.usuarios.application.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import com.servify.shared.domain.exception.ValidationException;
 import com.servify.shared.domain.valueobject.Ubicacion;
 import com.servify.usuarios.application.dto.ConfiguracionCuentaResult;
 import com.servify.usuarios.application.dto.PerfilUsuarioResult;
@@ -10,10 +14,12 @@ import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
 import com.servify.usuarios.application.port.out.UsuarioRepositoryPort;
 import com.servify.usuarios.domain.model.PerfilUsuario;
 import com.servify.usuarios.domain.model.Usuario;
+import com.servify.usuarios.domain.valueobject.Contacto;
+import com.servify.usuarios.domain.valueobject.NombreCompleto;
 
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Caso de uso de consulta para obtener la configuracion de cuenta.
+ */
 public class ObtenerConfiguracionCuentaService implements ObtenerConfiguracionCuentaUseCase {
 
     private final UsuarioRepositoryPort usuarioRepositoryPort;
@@ -25,58 +31,97 @@ public class ObtenerConfiguracionCuentaService implements ObtenerConfiguracionCu
         this.perfilUsuarioRepositoryPort = perfilUsuarioRepositoryPort;
     }
 
+    /**
+     * Obtiene la configuracion de cuenta de un usuario.
+     *
+     * Combina datos de Usuario y PerfilUsuario en un unico resultado para
+     * pantallas de configuracion. Si el perfil todavia no existe, el resultado
+     * se devuelve con perfil null.
+     */
     @Override
     public Optional<ConfiguracionCuentaResult> obtenerPorUsuarioId(UUID usuarioId) {
-        // TODO implementar obtención de configuración de cuenta.
-        // Debe:
-        // - validar que el usuarioId no sea nulo
-        // - consultar el usuario mediante UsuarioRepositoryPort
-        // - si el usuario no existe, devolver Optional.empty()
-        // - consultar opcionalmente el perfil mediante PerfilUsuarioRepositoryPort
-        // - construir UsuarioResult con los datos de cuenta
-        // - construir PerfilUsuarioResult solo si existe perfil
-        // - devolver ConfiguracionCuentaResult combinando ambos resultados
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (usuarioId == null) {
+            throw new ValidationException("El usuarioId es obligatorio");
+        }
+
+        return usuarioRepositoryPort.buscarPorId(usuarioId)
+                .map(usuario -> {
+                    UsuarioResult usuarioResult = construirUsuarioResult(usuario);
+
+                    PerfilUsuarioResult perfilResult = perfilUsuarioRepositoryPort.buscarPorUsuarioId(usuarioId)
+                            .map(this::construirPerfilResult)
+                            .orElse(null);
+
+                    return construirResultado(usuarioResult, perfilResult);
+                });
     }
 
     protected UsuarioResult construirUsuarioResult(Usuario usuario) {
-        // TODO implementar mapeo de Usuario a UsuarioResult.
-        // Debe incluir:
-        // - id
-        // - email y teléfono desde Contacto
-        // - rol
-        // - estado
-        // - estado de validación de identidad
-        // - fecha de registro
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea Usuario a UsuarioResult.
+        if (usuario == null) {
+            throw new ValidationException("El usuario es obligatorio");
+        }
+
+        Contacto contacto = usuario.getContacto();
+
+        return new UsuarioResult(
+                usuario.getId(),
+                contacto != null ? contacto.getEmail() : null,
+                contacto != null ? contacto.getTelefono() : null,
+                usuario.getRol(),
+                usuario.getEstado(),
+                usuario.getEstadoValidacionIdentidad(),
+                usuario.getFechaRegistro()
+        );
     }
 
     protected PerfilUsuarioResult construirPerfilResult(PerfilUsuario perfilUsuario) {
-        // TODO implementar mapeo de PerfilUsuario a PerfilUsuarioResult.
-        // Debe incluir:
-        // - id del perfil
-        // - usuarioId asociado
-        // - nombre y apellido desde NombreCompleto
-        // - edad
-        // - foto de perfil
-        // - ubicación mapeada a UbicacionResult
-        // - descripción personal
-        // - estado de perfil completo
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea PerfilUsuario a PerfilUsuarioResult.
+        if (perfilUsuario == null) {
+            return null;
+        }
+
+        NombreCompleto nombreCompleto = perfilUsuario.getNombreCompleto();
+
+        return PerfilUsuarioResult.builder()
+                .id(perfilUsuario.getId())
+                .usuarioId(perfilUsuario.getUsuarioId())
+                .nombre(nombreCompleto != null ? nombreCompleto.getNombre() : null)
+                .apellido(nombreCompleto != null ? nombreCompleto.getApellido() : null)
+                .edad(perfilUsuario.getEdad())
+                .fotoPerfilUrl(perfilUsuario.getFotoPerfilUrl())
+                .ubicacion(construirUbicacionResult(perfilUsuario.getUbicacion()))
+                .descripcionPersonal(perfilUsuario.getDescripcionPersonal())
+                .perfilCompleto(perfilUsuario.getPerfilCompleto())
+                .build();
     }
 
     protected UbicacionResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionResult.
-        // Debe contemplar el caso de ubicación nula si el perfil todavía no la tiene cargada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea Ubicacion del dominio al DTO de salida.
+        if (ubicacion == null) {
+            return null;
+        }
+
+        return new UbicacionResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
     protected ConfiguracionCuentaResult construirResultado(UsuarioResult usuarioResult,
                                                            PerfilUsuarioResult perfilUsuarioResult) {
-        // TODO implementar construcción de ConfiguracionCuentaResult.
-        // Debe combinar:
-        // - los datos de cuenta obligatorios
-        // - los datos de perfil, que podrían ser nulos si todavía no existe perfil asociado
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Combina los datos de cuenta y perfil en un unico DTO.
+        if (usuarioResult == null) {
+            throw new ValidationException("El resultado de usuario es obligatorio");
+        }
+
+        return new ConfiguracionCuentaResult(usuarioResult, perfilUsuarioResult);
     }
 }

@@ -1,5 +1,10 @@
 package com.servify.usuarios.application.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import com.servify.shared.domain.exception.NotFoundException;
+import com.servify.shared.domain.exception.ValidationException;
 import com.servify.shared.domain.valueobject.Ubicacion;
 import com.servify.usuarios.application.dto.ActualizarPerfilUsuarioCommand;
 import com.servify.usuarios.application.dto.PerfilUsuarioResult;
@@ -12,9 +17,9 @@ import com.servify.usuarios.domain.model.Usuario;
 import com.servify.usuarios.domain.service.PoliticaPerfilCompleto;
 import com.servify.usuarios.domain.valueobject.NombreCompleto;
 
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Caso de uso de aplicacion para actualizar o completar el perfil de un usuario.
+ */
 public class ActualizarPerfilUsuarioService implements ActualizarPerfilUsuarioUseCase {
 
     private final UsuarioRepositoryPort usuarioRepositoryPort;
@@ -29,104 +34,248 @@ public class ActualizarPerfilUsuarioService implements ActualizarPerfilUsuarioUs
         this.politicaPerfilCompleto = politicaPerfilCompleto;
     }
 
+    /**
+     * Actualiza o completa el perfil de un usuario.
+     *
+     * Flujo:
+     * - valida el command recibido
+     * - verifica que el usuario exista
+     * - busca el perfil actual o crea uno inicial si todavia no existe
+     * - aplica los cambios sobre la entidad de dominio
+     * - recalcula el estado de perfil completo usando PoliticaPerfilCompleto
+     * - persiste perfil y usuario
+     * - devuelve el resultado mapeado a PerfilUsuarioResult
+     */
     @Override
     public PerfilUsuarioResult actualizar(ActualizarPerfilUsuarioCommand command) {
-        // TODO implementar actualización/completado de perfil.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - verificar que el usuario exista
-        // - buscar el perfil existente por usuarioId
-        // - si no existe, crear un nuevo PerfilUsuario inicial
-        // - actualizar nombre, edad, foto, ubicación y descripción
-        // - recalcular si el perfil está completo usando PoliticaPerfilCompleto
-        // - persistir el perfil mediante PerfilUsuarioRepositoryPort
-        // - asociar el perfil al usuario si corresponde y persistir el usuario actualizado
-        // - devolver el resultado mapeado a PerfilUsuarioResult
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        validarCommand(command);
+
+        Usuario usuario = obtenerUsuarioExistente(command.getUsuarioId());
+
+        PerfilUsuario perfilUsuario = obtenerPerfilExistente(command.getUsuarioId())
+                .orElseGet(() -> crearPerfilInicial(command));
+
+        aplicarActualizaciones(perfilUsuario, command);
+
+        boolean perfilCompleto = evaluarPerfilCompleto(perfilUsuario);
+        actualizarEstadoPerfilCompleto(perfilUsuario, perfilCompleto);
+
+        PerfilUsuario perfilPersistido = perfilUsuarioRepositoryPort.guardar(perfilUsuario);
+
+        asociarPerfilAUsuarioSiCorresponde(usuario, perfilPersistido);
+        usuarioRepositoryPort.guardar(usuario);
+
+        return construirResultado(perfilPersistido);
     }
 
     protected Usuario obtenerUsuarioExistente(UUID usuarioId) {
-        // TODO implementar búsqueda obligatoria de usuario.
-        // Debe recuperar el usuario por id y lanzar la excepción correspondiente
-        // si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Recupera el usuario por id y falla si no existe.
+        if (usuarioId == null) {
+            throw new ValidationException("El usuarioId es obligatorio");
+        }
+
+        return usuarioRepositoryPort.buscarPorId(usuarioId)
+                .orElseThrow(() -> new NotFoundException("No existe un usuario con el id informado"));
     }
 
     protected Optional<PerfilUsuario> obtenerPerfilExistente(UUID usuarioId) {
-        // TODO implementar búsqueda opcional de perfil por usuarioId.
-        // Debe delegar la búsqueda en PerfilUsuarioRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Busca el perfil asociado al usuario. Si no existe, devuelve Optional.empty().
+        if (usuarioId == null) {
+            throw new ValidationException("El usuarioId es obligatorio");
+        }
+
+        return perfilUsuarioRepositoryPort.buscarPorUsuarioId(usuarioId);
     }
 
     protected PerfilUsuario crearPerfilInicial(ActualizarPerfilUsuarioCommand command) {
-        // TODO implementar creación inicial del perfil.
-        // Debe construir un nuevo PerfilUsuario con:
-        // - id nuevo
-        // - usuarioId recibido
-        // - NombreCompleto inicial
-        // - resto de datos del command
-        // - perfilCompleto calculado inicialmente
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Crea un perfil vacio para permitir completado progresivo desde la aplicacion.
+        if (command == null || command.getUsuarioId() == null) {
+            throw new ValidationException("No se puede crear un perfil inicial sin usuarioId");
+        }
+
+        return new PerfilUsuario(
+                generarIdPerfil(),
+                command.getUsuarioId(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
     }
 
     protected void aplicarActualizaciones(PerfilUsuario perfilUsuario,
                                           ActualizarPerfilUsuarioCommand command) {
-        // TODO implementar aplicación de cambios sobre el perfil.
-        // Debe invocar los métodos del dominio para actualizar:
-        // - nombre
-        // - edad
-        // - foto de perfil
-        // - ubicación
-        // - descripción personal
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Aplica cambios de forma parcial. Un valor null significa "no modificar".
+        // En foto y descripcion, si el campo viene vacio se normaliza a null dentro del dominio.
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil a actualizar es obligatorio");
+        }
+
+        if (command == null) {
+            throw new ValidationException("El command de actualizacion es obligatorio");
+        }
+
+        if (campoPresente(command.getNombre()) || campoPresente(command.getApellido())) {
+            String nombre = campoPresente(command.getNombre())
+                    ? command.getNombre()
+                    : obtenerNombreActual(perfilUsuario);
+
+            String apellido = campoPresente(command.getApellido())
+                    ? command.getApellido()
+                    : obtenerApellidoActual(perfilUsuario);
+
+            perfilUsuario.actualizarNombre(nombre, apellido);
+        }
+
+        if (command.getEdad() != null) {
+            perfilUsuario.actualizarEdad(command.getEdad());
+        }
+
+        if (campoPresente(command.getFotoPerfilUrl())) {
+            perfilUsuario.actualizarFotoPerfil(command.getFotoPerfilUrl());
+        }
+
+        if (command.getUbicacion() != null) {
+            perfilUsuario.actualizarUbicacion(command.getUbicacion());
+        }
+
+        if (campoPresente(command.getDescripcionPersonal())) {
+            perfilUsuario.actualizarDescripcionPersonal(command.getDescripcionPersonal());
+        }
     }
 
     protected boolean evaluarPerfilCompleto(PerfilUsuario perfilUsuario) {
-        // TODO implementar evaluación de perfil completo.
-        // Debe delegar la validación a PoliticaPerfilCompleto
-        // para centralizar la regla de negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Centraliza la regla de negocio en PoliticaPerfilCompleto.
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil es obligatorio");
+        }
+
+        return politicaPerfilCompleto.evaluar(perfilUsuario);
     }
 
     protected void actualizarEstadoPerfilCompleto(PerfilUsuario perfilUsuario,
                                                   boolean perfilCompleto) {
-        // TODO implementar actualización del estado perfilCompleto en la entidad.
-        // Debe reflejar el resultado de la evaluación de la política
-        // dentro del PerfilUsuario.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Refleja en la entidad el resultado calculado por la politica de dominio.
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil es obligatorio");
+        }
+
+        perfilUsuario.recalcularEstadoPerfilCompleto();
     }
 
     protected void asociarPerfilAUsuarioSiCorresponde(Usuario usuario,
                                                       PerfilUsuario perfilUsuario) {
-        // TODO implementar asociación del perfil al usuario.
-        // Debe vincular el perfil al usuario cuando corresponda
-        // respetando las reglas del dominio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Vincula el perfil al usuario cuando todavia no estaba asociado
+        // o cuando la referencia actual no coincide con el perfil persistido.
+        if (usuario == null) {
+            throw new ValidationException("El usuario es obligatorio");
+        }
+
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil es obligatorio");
+        }
+
+        if (usuario.getPerfil() != perfilUsuario) {
+            usuario.asociarPerfil(perfilUsuario);
+        }
     }
 
     protected PerfilUsuarioResult construirResultado(PerfilUsuario perfilUsuario) {
-        // TODO implementar mapeo de PerfilUsuario a PerfilUsuarioResult.
-        // Debe construir el resultado incluyendo la ubicación como UbicacionResult
-        // y el resto de los datos relevantes del perfil actualizado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea la entidad de dominio al DTO de salida usado por la capa de aplicacion.
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil es obligatorio");
+        }
+
+        NombreCompleto nombreCompleto = perfilUsuario.getNombreCompleto();
+
+        return PerfilUsuarioResult.builder()
+                .id(perfilUsuario.getId())
+                .usuarioId(perfilUsuario.getUsuarioId())
+                .nombre(nombreCompleto != null ? nombreCompleto.getNombre() : null)
+                .apellido(nombreCompleto != null ? nombreCompleto.getApellido() : null)
+                .edad(perfilUsuario.getEdad())
+                .fotoPerfilUrl(perfilUsuario.getFotoPerfilUrl())
+                .ubicacion(construirUbicacionResult(perfilUsuario.getUbicacion()))
+                .descripcionPersonal(perfilUsuario.getDescripcionPersonal())
+                .perfilCompleto(perfilUsuario.getPerfilCompleto())
+                .build();
     }
 
     protected UbicacionResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionResult.
-        // Debe contemplar el caso de ubicación nula si el flujo lo permite.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea la ubicacion del dominio al DTO de salida.
+        if (ubicacion == null) {
+            return null;
+        }
+
+        return new UbicacionResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
     protected NombreCompleto construirNombreCompleto(ActualizarPerfilUsuarioCommand command) {
-        // TODO implementar construcción del value object NombreCompleto.
-        // Debe construirlo a partir del nombre y apellido recibidos en el command,
-        // aplicando las validaciones necesarias.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Construye el value object a partir del command cuando se necesita validar ambas partes.
+        if (command == null) {
+            throw new ValidationException("El command es obligatorio");
+        }
+
+        NombreCompleto nombreCompleto = new NombreCompleto(
+                normalizarTextoObligatorio(command.getNombre(), "El nombre es obligatorio"),
+                normalizarTextoObligatorio(command.getApellido(), "El apellido es obligatorio")
+        );
+
+        if (!nombreCompleto.esValido()) {
+            throw new ValidationException("El nombre completo no es valido");
+        }
+
+        return nombreCompleto;
     }
 
     protected UUID generarIdPerfil() {
-        // TODO implementar generación de identificador para el perfil.
-        // Por el momento puede resolverse con UUID aleatorio si esa es la estrategia elegida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Genera un identificador simple basado en UUID aleatorio.
+        return UUID.randomUUID();
+    }
+
+    private void validarCommand(ActualizarPerfilUsuarioCommand command) {
+        if (command == null) {
+            throw new ValidationException("El command de actualizacion de perfil es obligatorio");
+        }
+
+        if (command.getUsuarioId() == null) {
+            throw new ValidationException("El usuarioId es obligatorio");
+        }
+    }
+
+    private String obtenerNombreActual(PerfilUsuario perfilUsuario) {
+        return perfilUsuario.getNombreCompleto() != null
+                ? perfilUsuario.getNombreCompleto().getNombre()
+                : null;
+    }
+
+    private String obtenerApellidoActual(PerfilUsuario perfilUsuario) {
+        return perfilUsuario.getNombreCompleto() != null
+                ? perfilUsuario.getNombreCompleto().getApellido()
+                : null;
+    }
+
+    private boolean campoPresente(String valor) {
+        return valor != null;
+    }
+
+    private String normalizarTextoObligatorio(String valor, String mensajeError) {
+        if (valor == null || valor.isBlank()) {
+            throw new ValidationException(mensajeError);
+        }
+
+        return valor.trim();
     }
 }

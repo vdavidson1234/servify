@@ -1,15 +1,20 @@
 package com.servify.usuarios.application.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import com.servify.shared.domain.exception.ValidationException;
 import com.servify.shared.domain.valueobject.Ubicacion;
 import com.servify.usuarios.application.dto.PerfilUsuarioResult;
 import com.servify.usuarios.application.dto.UbicacionResult;
 import com.servify.usuarios.application.port.in.ObtenerPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
 import com.servify.usuarios.domain.model.PerfilUsuario;
+import com.servify.usuarios.domain.valueobject.NombreCompleto;
 
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Caso de uso de consulta para obtener perfiles de usuario.
+ */
 public class ObtenerPerfilUsuarioService implements ObtenerPerfilUsuarioUseCase {
 
     private final PerfilUsuarioRepositoryPort perfilUsuarioRepositoryPort;
@@ -18,45 +23,73 @@ public class ObtenerPerfilUsuarioService implements ObtenerPerfilUsuarioUseCase 
         this.perfilUsuarioRepositoryPort = perfilUsuarioRepositoryPort;
     }
 
+    /**
+     * Obtiene el perfil asociado a un usuario.
+     *
+     * Devuelve Optional.empty() cuando el usuario todavia no tiene perfil asociado.
+     */
     @Override
     public Optional<PerfilUsuarioResult> obtenerPorUsuarioId(UUID usuarioId) {
-        // TODO implementar consulta de perfil por usuarioId.
-        // Debe:
-        // - validar que el usuarioId no sea nulo
-        // - consultar el perfil mediante PerfilUsuarioRepositoryPort
-        // - mapear el resultado a PerfilUsuarioResult si existe
-        // - devolver Optional.empty() si no existe perfil asociado
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (usuarioId == null) {
+            throw new ValidationException("El usuarioId es obligatorio");
+        }
+
+        return perfilUsuarioRepositoryPort.buscarPorUsuarioId(usuarioId)
+                .map(this::construirResultado);
     }
 
+    /**
+     * Obtiene un perfil por su propio identificador.
+     *
+     * Devuelve Optional.empty() si no existe un perfil con ese id.
+     */
     @Override
     public Optional<PerfilUsuarioResult> obtenerPorPerfilId(UUID perfilId) {
-        // TODO implementar consulta de perfil por perfilId.
-        // Debe:
-        // - validar que el perfilId no sea nulo
-        // - consultar el perfil mediante PerfilUsuarioRepositoryPort
-        // - mapear el resultado a PerfilUsuarioResult si existe
-        // - devolver Optional.empty() si no existe un perfil con ese identificador
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (perfilId == null) {
+            throw new ValidationException("El perfilId es obligatorio");
+        }
+
+        return perfilUsuarioRepositoryPort.buscarPorId(perfilId)
+                .map(this::construirResultado);
     }
 
     protected PerfilUsuarioResult construirResultado(PerfilUsuario perfilUsuario) {
-        // TODO implementar mapeo de PerfilUsuario a PerfilUsuarioResult.
-        // Debe construir el resultado con:
-        // - id del perfil
-        // - usuarioId asociado
-        // - nombre y apellido desde NombreCompleto
-        // - edad
-        // - foto de perfil
-        // - ubicación mapeada a UbicacionResult
-        // - descripción personal
-        // - estado de perfil completo
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea PerfilUsuario a PerfilUsuarioResult.
+        if (perfilUsuario == null) {
+            throw new ValidationException("El perfil es obligatorio");
+        }
+
+        NombreCompleto nombreCompleto = perfilUsuario.getNombreCompleto();
+
+        return PerfilUsuarioResult.builder()
+                .id(perfilUsuario.getId())
+                .usuarioId(perfilUsuario.getUsuarioId())
+                .nombre(nombreCompleto != null ? nombreCompleto.getNombre() : null)
+                .apellido(nombreCompleto != null ? nombreCompleto.getApellido() : null)
+                .edad(perfilUsuario.getEdad())
+                .fotoPerfilUrl(perfilUsuario.getFotoPerfilUrl())
+                .ubicacion(construirUbicacionResult(perfilUsuario.getUbicacion()))
+                .descripcionPersonal(perfilUsuario.getDescripcionPersonal())
+                .perfilCompleto(perfilUsuario.getPerfilCompleto())
+                .build();
     }
 
     protected UbicacionResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionResult.
-        // Debe contemplar el caso de ubicación nula si el flujo lo permite.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Mapea Ubicacion del dominio al DTO de salida.
+        if (ubicacion == null) {
+            return null;
+        }
+
+        return new UbicacionResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 }
