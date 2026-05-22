@@ -35,130 +35,176 @@ public class ConfirmarFinalizacionServicioService implements ConfirmarFinalizaci
 
     @Override
     public void confirmar(ConfirmarFinalizacionServicioCommand command) {
-        // TODO implementar confirmación de finalización del servicio.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - validar que solicitudId, asignacionServicioId, confirmanteId y rolConfirmante no sean nulos
-        // - verificar que la solicitud exista
-        // - verificar que la asignación exista
-        // - verificar que la asignación corresponda a la solicitud indicada
-        // - verificar que la asignación se encuentre en estado apto para finalizarse
-        // - verificar que el confirmante tenga relación válida con la asignación
-        // - verificar que no exista ya una confirmación válida del mismo rol para la misma asignación
-        // - construir y persistir la confirmación
-        // - obtener las confirmaciones vigentes de la asignación
-        // - evaluar mediante PoliticaFinalizacionMutua si ya puede cerrarse
-        // - si corresponde, finalizar la asignación y marcar la solicitud como finalizada
-        // - persistir los cambios de asignación y solicitud
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Confirma la finalización de un servicio por una de las partes.
+        // - valida que la asignación y la solicitud correspondan
+        // - registra la confirmación y cierra la asignación si la política lo permite
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getSolicitudId() == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        if (command.getAsignacionServicioId() == null) {
+            throw new IllegalArgumentException("asignacionServicioId no puede ser nulo");
+        }
+        if (command.getConfirmanteId() == null) {
+            throw new IllegalArgumentException("confirmanteId no puede ser nulo");
+        }
+        if (command.getRolConfirmante() == null) {
+            throw new IllegalArgumentException("rolConfirmante no puede ser nulo");
+        }
+
+        SolicitudServicio solicitud = obtenerSolicitudExistente(command.getSolicitudId());
+        AsignacionServicio asignacion = obtenerAsignacionExistente(command.getAsignacionServicioId());
+
+        validarCorrespondenciaSolicitudAsignacion(solicitud, asignacion);
+        validarAsignacionFinalizable(asignacion);
+        validarConfirmante(command, asignacion, solicitud);
+        validarAusenciaDeConfirmacionPrevia(command);
+
+        LocalDateTime fecha = obtenerFechaActual();
+        ConfirmacionFinalizacion confirmacion = construirConfirmacion(command, fecha);
+        persistirConfirmacion(confirmacion);
+
+        List<ConfirmacionFinalizacion> confirmaciones = obtenerConfirmacionesDeAsignacion(asignacion.getId());
+        evaluarYCerrarSiCorresponde(solicitud, asignacion, confirmaciones, fecha);
+
+        persistirAsignacion(asignacion);
+        persistirSolicitud(solicitud);
     }
 
     protected SolicitudServicio obtenerSolicitudExistente(UUID solicitudId) {
-        // TODO implementar búsqueda obligatoria de solicitud por id.
-        // Debe recuperar la solicitud desde SolicitudServicioRepositoryPort
-        // y lanzar la excepción correspondiente si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada: " + solicitudId));
     }
 
     protected AsignacionServicio obtenerAsignacionExistente(UUID asignacionServicioId) {
-        // TODO implementar búsqueda obligatoria de asignación por id.
-        // Debe recuperar la asignación desde AsignacionServicioRepositoryPort
-        // y lanzar la excepción correspondiente si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (asignacionServicioId == null) {
+            throw new IllegalArgumentException("asignacionServicioId no puede ser nulo");
+        }
+        return this.asignacionServicioRepositoryPort.buscarPorId(asignacionServicioId)
+                .orElseThrow(() -> new IllegalArgumentException("Asignación no encontrada: " + asignacionServicioId));
     }
 
     protected void validarCorrespondenciaSolicitudAsignacion(SolicitudServicio solicitudServicio,
                                                              AsignacionServicio asignacionServicio) {
-        // TODO implementar validación de correspondencia entre solicitud y asignación.
-        // Debe verificar que la asignación pertenezca a la solicitud indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null || asignacionServicio == null) {
+            throw new IllegalArgumentException("Solicitud y asignación no pueden ser nulas");
+        }
+        if (!asignacionServicio.correspondeASolicitud(solicitudServicio.getId())) {
+            throw new IllegalArgumentException("La asignación no corresponde a la solicitud indicada");
+        }
     }
 
     protected void validarAsignacionFinalizable(AsignacionServicio asignacionServicio) {
-        // TODO implementar validación previa a la finalización.
-        // Debe verificar que la asignación se encuentre en un estado apto
-        // para recibir confirmaciones y eventualmente finalizarse.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (asignacionServicio == null) {
+            throw new IllegalArgumentException("Asignación no puede ser nula");
+        }
+        if (!asignacionServicio.puedeFinalizarse()) {
+            throw new IllegalStateException("La asignación no está en estado apto para finalizarse");
+        }
     }
 
     protected void validarConfirmante(ConfirmarFinalizacionServicioCommand command,
                                       AsignacionServicio asignacionServicio,
                                       SolicitudServicio solicitudServicio) {
-        // TODO implementar validación del confirmante.
-        // Debe verificar que:
-        // - si el rol es SOLICITANTE, el confirmanteId coincida con el solicitante de la solicitud
-        // - si el rol es PRESTADOR, el confirmanteId coincida con el prestador de la asignación
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (command == null || asignacionServicio == null || solicitudServicio == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para validar confirmante");
+        }
+        switch (command.getRolConfirmante()) {
+            case SOLICITANTE:
+                if (!solicitudServicio.getSolicitanteId().equals(command.getConfirmanteId())) {
+                    throw new IllegalArgumentException("El confirmante no es el solicitante de la solicitud");
+                }
+                break;
+            case PRESTADOR:
+                if (!asignacionServicio.getPrestadorId().equals(command.getConfirmanteId())) {
+                    throw new IllegalArgumentException("El confirmante no es el prestador de la asignación");
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Rol de confirmante no reconocido: " + command.getRolConfirmante());
+        }
     }
 
     protected void validarAusenciaDeConfirmacionPrevia(ConfirmarFinalizacionServicioCommand command) {
-        // TODO implementar validación de confirmación previa por rol.
-        // Debe verificar, usando ConfirmacionFinalizacionRepositoryPort,
-        // que no exista ya una confirmación válida del mismo rol para la misma asignación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        java.util.Optional<ConfirmacionFinalizacion> previa = this.confirmacionFinalizacionRepositoryPort
+                .buscarPorAsignacionServicioIdYRolConfirmante(command.getAsignacionServicioId(), command.getRolConfirmante());
+        if (previa.isPresent() && previa.get().estaConfirmada()) {
+            throw new IllegalStateException("Ya existe una confirmación previa válida para este rol y asignación");
+        }
     }
 
     protected ConfirmacionFinalizacion construirConfirmacion(ConfirmarFinalizacionServicioCommand command,
                                                              LocalDateTime fechaConfirmacion) {
-        // TODO implementar construcción de la confirmación.
-        // Debe crear la entidad ConfirmacionFinalizacion con:
-        // - id nuevo
-        // - solicitudId
-        // - asignacionServicioId
-        // - confirmanteId
-        // - rolConfirmante
-        // - confirmada en true
-        // - fechaConfirmacion actual
-        // - observación recibida
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (command == null || fechaConfirmacion == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para construir confirmación");
+        }
+        ConfirmacionFinalizacion c = new ConfirmacionFinalizacion(
+                generarIdConfirmacion(),
+                command.getSolicitudId(),
+                command.getAsignacionServicioId(),
+                command.getConfirmanteId(),
+                command.getRolConfirmante(),
+                true,
+                fechaConfirmacion,
+                command.getObservacion()
+        );
+        return c;
     }
 
     protected List<ConfirmacionFinalizacion> obtenerConfirmacionesDeAsignacion(UUID asignacionServicioId) {
-        // TODO implementar obtención de confirmaciones de la asignación.
-        // Debe recuperar todas las confirmaciones asociadas a la asignación indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (asignacionServicioId == null) {
+            throw new IllegalArgumentException("asignacionServicioId no puede ser nulo");
+        }
+        return this.confirmacionFinalizacionRepositoryPort.buscarPorAsignacionServicioId(asignacionServicioId);
     }
 
     protected void evaluarYCerrarSiCorresponde(SolicitudServicio solicitudServicio,
                                                AsignacionServicio asignacionServicio,
                                                List<ConfirmacionFinalizacion> confirmaciones,
                                                LocalDateTime fechaFinalizacion) {
-        // TODO implementar evaluación y cierre.
-        // Debe utilizar PoliticaFinalizacionMutua para determinar si ya existen
-        // confirmaciones válidas de ambas partes.
-        // Si corresponde:
-        // - asignacionServicio.finalizar(fechaFinalizacion)
-        // - solicitudServicio.marcarComoFinalizada()
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null || asignacionServicio == null || confirmaciones == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para evaluación de cierre");
+        }
+        if (this.politicaFinalizacionMutua.puedeFinalizarse(solicitudServicio, confirmaciones)) {
+            asignacionServicio.finalizar(fechaFinalizacion);
+            solicitudServicio.marcarComoFinalizada();
+        }
     }
 
     protected void persistirConfirmacion(ConfirmacionFinalizacion confirmacionFinalizacion) {
-        // TODO implementar persistencia de la confirmación.
-        // Debe delegar el guardado en ConfirmacionFinalizacionRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (confirmacionFinalizacion == null) {
+            throw new IllegalArgumentException("confirmacionFinalizacion no puede ser nula");
+        }
+        this.confirmacionFinalizacionRepositoryPort.guardar(confirmacionFinalizacion);
     }
 
     protected void persistirAsignacion(AsignacionServicio asignacionServicio) {
-        // TODO implementar persistencia de la asignación.
-        // Debe delegar el guardado en AsignacionServicioRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (asignacionServicio == null) {
+            throw new IllegalArgumentException("asignacionServicio no puede ser nula");
+        }
+        this.asignacionServicioRepositoryPort.guardar(asignacionServicio);
     }
 
     protected void persistirSolicitud(SolicitudServicio solicitudServicio) {
-        // TODO implementar persistencia de la solicitud.
-        // Debe delegar el guardado en SolicitudServicioRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("solicitudServicio no puede ser nula");
+        }
+        this.solicitudServicioRepositoryPort.guardar(solicitudServicio);
     }
 
     protected UUID generarIdConfirmacion() {
-        // TODO implementar generación de identificador de confirmación.
-        // Por el momento puede resolverse con UUID aleatorio si esa es la estrategia elegida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtención de fecha actual.
-        // Debe centralizar la fecha/hora usada al confirmar la finalización.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return LocalDateTime.now();
     }
 }

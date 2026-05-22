@@ -34,26 +34,42 @@ public class DisponibilidadHoraria {
     }
 
     public boolean esRangoHorarioValido() {
-        // TODO implementar validación del rango horario.
-        // Debe verificar, como mínimo:
-        // - que el día de la semana no sea nulo
-        // - que horaDesde y horaHasta no sean nulas
-        // - que horaDesde sea anterior a horaHasta
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (this.diaSemana == null) {
+            return false;
+        }
+        if (this.horaDesde == null || this.horaHasta == null) {
+            return false;
+        }
+        return this.horaDesde.isBefore(this.horaHasta);
     }
 
     public boolean incluyeHora(LocalTime hora) {
-        // TODO implementar verificación de inclusión de una hora dentro del rango.
-        // Debe devolver true si la hora recibida cae dentro de la franja horaria
-        // representada por este value object.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (hora == null) {
+            return false;
+        }
+        if (!esRangoHorarioValido()) {
+            return false;
+        }
+        // Inclusivo en horaDesde, exclusivo en horaHasta
+        return !hora.isBefore(this.horaDesde) && hora.isBefore(this.horaHasta);
     }
 
     public boolean seSuperponeCon(DisponibilidadHoraria otraDisponibilidad) {
-        // TODO implementar validación de solapamiento entre disponibilidades.
-        // Debe verificar si ambas disponibilidades corresponden al mismo día
-        // y si sus rangos horarios se pisan parcial o totalmente.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (otraDisponibilidad == null) {
+            return false;
+        }
+        if (this.diaSemana == null || otraDisponibilidad.diaSemana == null) {
+            return false;
+        }
+        if (!this.diaSemana.equals(otraDisponibilidad.diaSemana)) {
+            return false;
+        }
+        if (!this.esRangoHorarioValido() || !otraDisponibilidad.esRangoHorarioValido()) {
+            return false;
+        }
+        LocalTime inicioMax = this.horaDesde.isAfter(otraDisponibilidad.horaDesde) ? this.horaDesde : otraDisponibilidad.horaDesde;
+        LocalTime finMin = this.horaHasta.isBefore(otraDisponibilidad.horaHasta) ? this.horaHasta : otraDisponibilidad.horaHasta;
+        return inicioMax.isBefore(finMin);
     }
 
     @Override

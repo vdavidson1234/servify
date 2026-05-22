@@ -1,10 +1,10 @@
 package com.servify.administracion.domain.model;
 
-import com.servify.shared.domain.model.BaseEntity;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.servify.shared.domain.model.BaseEntity;
 
 public class ConfiguracionGeneral extends BaseEntity {
 
@@ -66,76 +66,98 @@ public class ConfiguracionGeneral extends BaseEntity {
     }
 
     public boolean requiereValidacionIdentidad() {
-        // TODO implementar verificación de requerimiento de validación de identidad.
-        // Debe devolver true cuando la plataforma exija identidad validada
-        // para permitir determinadas operaciones, como publicar servicios.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.validacionIdentidadRequerida != null && this.validacionIdentidadRequerida;
     }
 
     public boolean estaActiva() {
-        // TODO implementar verificación de plataforma activa.
-        // Debe devolver true cuando la plataforma se encuentre habilitada
-        // para operar normalmente.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.plataformaActiva != null && this.plataformaActiva;
     }
 
     public boolean configuracionBusquedaValida() {
-        // TODO implementar validación de parámetros de búsqueda.
-        // Debe verificar que los radios y tiempos configurados sean coherentes,
-        // positivos y útiles para la lógica de distribución progresiva.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (this.radioBusquedaInicialKm == null || this.radioBusquedaInicialKm <= 0) {
+            return false;
+        }
+        if (this.radioBusquedaExpansionKm == null || this.radioBusquedaExpansionKm <= 0) {
+            return false;
+        }
+        if (this.radioBusquedaExpansionKm <= this.radioBusquedaInicialKm) {
+            return false;
+        }
+        if (this.tiempoEsperaExpansionMinutos == null || this.tiempoEsperaExpansionMinutos <= 0) {
+            return false;
+        }
+        return true;
     }
 
     public void actualizarRadioBusquedaInicialKm(Integer radioBusquedaInicialKm) {
-        // TODO implementar actualización del radio inicial de búsqueda.
-        // Debe validar que el valor no sea nulo, sea positivo
-        // y cumpla las reglas operativas de la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (radioBusquedaInicialKm == null) {
+            throw new IllegalArgumentException("El radio de búsqueda inicial no puede ser nulo");
+        }
+        if (radioBusquedaInicialKm <= 0) {
+            throw new IllegalArgumentException("El radio de búsqueda inicial debe ser un valor positivo");
+        }
+        this.radioBusquedaInicialKm = radioBusquedaInicialKm;
     }
 
     public void actualizarRadioBusquedaExpansionKm(Integer radioBusquedaExpansionKm) {
-        // TODO implementar actualización del radio de expansión.
-        // Debe validar que el valor no sea nulo, sea positivo
-        // y sea coherente con el radio inicial de búsqueda.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (radioBusquedaExpansionKm == null) {
+            throw new IllegalArgumentException("El radio de expansión no puede ser nulo");
+        }
+        if (radioBusquedaExpansionKm <= 0) {
+            throw new IllegalArgumentException("El radio de expansión debe ser un valor positivo");
+        }
+        if (this.radioBusquedaInicialKm != null && radioBusquedaExpansionKm <= this.radioBusquedaInicialKm) {
+            throw new IllegalArgumentException("El radio de expansión debe ser mayor que el radio inicial");
+        }
+        this.radioBusquedaExpansionKm = radioBusquedaExpansionKm;
     }
 
     public void actualizarTiempoEsperaExpansionMinutos(Integer tiempoEsperaExpansionMinutos) {
-        // TODO implementar actualización del tiempo de espera para expansión.
-        // Debe validar que el valor no sea nulo, sea positivo
-        // y resulte coherente con el flujo de distribución.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (tiempoEsperaExpansionMinutos == null) {
+            throw new IllegalArgumentException("El tiempo de espera para expansión no puede ser nulo");
+        }
+        if (tiempoEsperaExpansionMinutos <= 0) {
+            throw new IllegalArgumentException("El tiempo de espera debe ser un valor positivo en minutos");
+        }
+        this.tiempoEsperaExpansionMinutos = tiempoEsperaExpansionMinutos;
     }
 
     public void actualizarValidacionIdentidadRequerida(Boolean validacionIdentidadRequerida) {
-        // TODO implementar actualización del requerimiento de validación de identidad.
-        // Debe registrar el nuevo comportamiento esperado de la plataforma
-        // respecto a la exigencia de identidad validada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (validacionIdentidadRequerida == null) {
+            throw new IllegalArgumentException("El requerimiento de validación de identidad no puede ser nulo");
+        }
+        this.validacionIdentidadRequerida = validacionIdentidadRequerida;
     }
 
     public void actualizarPrecioBaseMinimoReferencia(BigDecimal precioBaseMinimoReferencia) {
-        // TODO implementar actualización del precio mínimo de referencia.
-        // Debe validar que el valor no sea nulo, no sea negativo
-        // y sea coherente con las reglas de negocio definidas.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (precioBaseMinimoReferencia == null) {
+            throw new IllegalArgumentException("El precio base mínimo de referencia no puede ser nulo");
+        }
+        if (precioBaseMinimoReferencia.signum() < 0) {
+            throw new IllegalArgumentException("El precio base mínimo debe ser no negativo");
+        }
+        this.precioBaseMinimoReferencia = precioBaseMinimoReferencia;
+    }
+
+    public void actualizarPlataformaActiva(Boolean plataformaActiva) {
+        if (plataformaActiva == null) {
+            throw new IllegalArgumentException("El estado de la plataforma no puede ser nulo");
+        }
+        this.plataformaActiva = plataformaActiva;
     }
 
     public void activarPlataforma() {
-        // TODO implementar activación general de la plataforma.
-        // Debe marcar la plataforma como activa y registrar la actualización.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.plataformaActiva = true;
     }
 
     public void desactivarPlataforma() {
-        // TODO implementar desactivación general de la plataforma.
-        // Debe marcar la plataforma como inactiva y registrar la actualización.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.plataformaActiva = false;
     }
 
-    public void registrarActualizacion(LocalDateTime fechaActualizacion) {
-        // TODO implementar actualización de la fecha de modificación.
-        // Debe registrar la fecha/hora en la que se modificó la configuración general.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+    public void actualizarFechaUltimaActualizacion(LocalDateTime fechaActualizacion) {
+        if (fechaActualizacion == null) {
+            throw new IllegalArgumentException("La fecha de actualización no puede ser nula");
+        }
+        this.fechaUltimaActualizacion = fechaActualizacion;
     }
 }

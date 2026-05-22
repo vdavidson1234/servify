@@ -22,40 +22,66 @@ public class ListarSolicitudesDelSolicitanteService implements ListarSolicitudes
 
     @Override
     public List<SolicitudServicioResult> listarPorSolicitanteId(UUID solicitanteId) {
-        // TODO implementar listado de solicitudes del solicitante.
-        // Debe:
-        // - validar que el solicitanteId no sea nulo
-        // - consultar las solicitudes mediante SolicitudServicioRepositoryPort
-        // - mapear cada solicitud a SolicitudServicioResult
-        // - devolver lista vacía si no existen solicitudes asociadas
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Lista las solicitudes creadas por un solicitante.
+        // - Valida el id del solicitante.
+        // - Recupera las entidades y las mapea a DTOs.
+        if (solicitanteId == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        List<SolicitudServicio> solicitudes = this.solicitudServicioRepositoryPort.buscarPorSolicitanteId(solicitanteId);
+        if (solicitudes == null || solicitudes.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        java.util.List<SolicitudServicioResult> resultados = new java.util.ArrayList<>();
+        for (SolicitudServicio s : solicitudes) {
+            resultados.add(construirResultado(s));
+        }
+        return resultados;
     }
 
     protected SolicitudServicioResult construirResultado(SolicitudServicio solicitudServicio) {
-        // TODO implementar mapeo de SolicitudServicio a SolicitudServicioResult.
-        // Debe incluir:
-        // - id de la solicitud
-        // - solicitanteId
-        // - categoriaServicioId
-        // - modalidad
-        // - ubicación mapeada a UbicacionSolicitudResult
-        // - disponibilidad requerida mapeada a DisponibilidadHorariaResult
-        // - descripción de necesidad
-        // - precio de referencia
-        // - estado
-        // - fecha de solicitud
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            return null;
+        }
+        return new SolicitudServicioResult(
+                solicitudServicio.getId(),
+                solicitudServicio.getSolicitanteId(),
+                solicitudServicio.getCategoriaServicioId(),
+                solicitudServicio.getModalidadServicio(),
+                construirUbicacionResult(solicitudServicio.getUbicacion()),
+                construirDisponibilidadResult(solicitudServicio.getDisponibilidadRequerida()),
+                solicitudServicio.getDescripcionNecesidad(),
+                solicitudServicio.getPrecioReferencia(),
+                solicitudServicio.getEstado(),
+                solicitudServicio.getFechaSolicitud()
+        );
     }
 
     protected UbicacionSolicitudResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionSolicitudResult.
-        // Debe contemplar el caso de ubicación nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (ubicacion == null) {
+            return null;
+        }
+        return new UbicacionSolicitudResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
     protected DisponibilidadHorariaResult construirDisponibilidadResult(DisponibilidadHoraria disponibilidadHoraria) {
-        // TODO implementar mapeo de DisponibilidadHoraria a DisponibilidadHorariaResult.
-        // Debe contemplar el caso de disponibilidad nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (disponibilidadHoraria == null) {
+            return null;
+        }
+        return new DisponibilidadHorariaResult(
+                disponibilidadHoraria.getDiaSemana(),
+                disponibilidadHoraria.getHoraDesde(),
+                disponibilidadHoraria.getHoraHasta()
+        );
     }
 }

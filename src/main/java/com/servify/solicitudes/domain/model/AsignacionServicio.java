@@ -5,6 +5,7 @@ import com.servify.solicitudes.domain.enumtype.EstadoAsignacion;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 //Decisiones tomadas:
@@ -79,84 +80,83 @@ public class AsignacionServicio extends BaseEntity {
     }
 
     public boolean estaPendienteConfirmacion() {
-        // TODO implementar verificación de estado PENDIENTE_CONFIRMACION.
-        // Debe devolver true cuando la asignación exista pero todavía no haya
-        // quedado consolidada como activa según el flujo definido por el negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoAsignacion.PENDIENTE_CONFIRMACION;
     }
 
     public boolean estaActiva() {
-        // TODO implementar verificación de estado ACTIVA.
-        // Debe devolver true cuando la asignación se encuentre vigente
-        // y el servicio esté en curso o listo para ejecutarse.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoAsignacion.ACTIVA;
     }
 
     public boolean estaFinalizada() {
-        // TODO implementar verificación de estado FINALIZADA.
-        // Debe devolver true cuando la asignación haya concluido correctamente
-        // y la solicitud asociada haya completado su cierre.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoAsignacion.FINALIZADA;
     }
 
     public boolean estaCancelada() {
-        // TODO implementar verificación de estado CANCELADA.
-        // Debe devolver true cuando la asignación haya sido anulada
-        // por una regla válida del flujo de negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoAsignacion.CANCELADA;
     }
 
     public boolean perteneceAPrestador(UUID prestadorId) {
-        // TODO implementar validación de pertenencia al prestador.
-        // Debe verificar si esta asignación corresponde al prestador indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return prestadorId != null && Objects.equals(this.prestadorId, prestadorId);
     }
 
     public boolean correspondeASolicitud(UUID solicitudId) {
-        // TODO implementar validación de pertenencia a la solicitud.
-        // Debe verificar si esta asignación corresponde a la solicitud indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return solicitudId != null && Objects.equals(this.solicitudId, solicitudId);
     }
 
     public boolean puedeFinalizarse() {
-        // TODO implementar validación previa a finalización.
-        // Debe verificar que la asignación se encuentre en un estado
-        // que permita su cierre efectivo según las reglas del negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return estaActiva();
     }
 
     public void actualizarPrecioAcordado(BigDecimal precioAcordado) {
-        // TODO implementar actualización del precio acordado.
-        // Debe validar que el precio no sea nulo, no sea negativo
-        // y que el cambio esté permitido por el estado actual de la asignación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (precioAcordado == null) {
+            throw new IllegalArgumentException("El precio acordado no puede ser nulo");
+        }
+        if (precioAcordado.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El precio acordado no puede ser negativo");
+        }
+        if (!estaPendienteConfirmacion() && !estaActiva()) {
+            throw new IllegalStateException("El precio acordado no puede modificarse en el estado actual");
+        }
+        this.precioAcordado = precioAcordado;
     }
 
     public void marcarComoPendienteConfirmacion() {
-        // TODO implementar transición a estado PENDIENTE_CONFIRMACION.
-        // Debe utilizarse al generarse la asignación inicial,
-        // según el flujo operativo definido por la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (estaFinalizada() || estaCancelada() || estaActiva()) {
+            throw new IllegalStateException("La asignación no puede volver a pendiente de confirmacion");
+        }
+        this.estado = EstadoAsignacion.PENDIENTE_CONFIRMACION;
+        if (this.fechaAsignacion == null) {
+            this.fechaAsignacion = LocalDateTime.now();
+        }
+        this.fechaFinalizacion = null;
     }
 
     public void activar() {
-        // TODO implementar transición a estado ACTIVA.
-        // Debe consolidar la asignación como vigente
-        // una vez cumplidas las condiciones necesarias del flujo.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!estaPendienteConfirmacion()) {
+            throw new IllegalStateException("La asignación solo puede activarse desde pendiente de confirmacion");
+        }
+        this.estado = EstadoAsignacion.ACTIVA;
     }
 
     public void finalizar(LocalDateTime fechaFinalizacion) {
-        // TODO implementar finalización de la asignación.
-        // Debe cambiar el estado a FINALIZADA, registrar la fecha de finalización
-        // y validar que la asignación pueda cerrarse.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaFinalizacion == null) {
+            throw new IllegalArgumentException("La fecha de finalizacion no puede ser nula");
+        }
+        if (!puedeFinalizarse()) {
+            throw new IllegalStateException("La asignacion no puede finalizarse en su estado actual");
+        }
+        if (this.fechaAsignacion != null && fechaFinalizacion.isBefore(this.fechaAsignacion)) {
+            throw new IllegalArgumentException("La fecha de finalizacion debe ser posterior o igual a la fecha de asignacion");
+        }
+        this.estado = EstadoAsignacion.FINALIZADA;
+        this.fechaFinalizacion = fechaFinalizacion;
     }
 
     public void cancelar() {
-        // TODO implementar cancelación de la asignación.
-        // Debe cambiar el estado a CANCELADA respetando las transiciones válidas
-        // y preservando la trazabilidad del proceso.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (estaFinalizada() || estaCancelada()) {
+            throw new IllegalStateException("La asignacion no puede cancelarse en su estado actual");
+        }
+        this.estado = EstadoAsignacion.CANCELADA;
+        this.fechaFinalizacion = LocalDateTime.now();
     }
 }

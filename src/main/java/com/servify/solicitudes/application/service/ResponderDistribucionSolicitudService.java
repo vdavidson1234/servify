@@ -6,6 +6,7 @@ import com.servify.solicitudes.application.port.in.ResponderDistribucionSolicitu
 import com.servify.solicitudes.application.port.out.DistribucionSolicitudRepositoryPort;
 import com.servify.solicitudes.application.port.out.SolicitudServicioRepositoryPort;
 import com.servify.solicitudes.domain.model.DistribucionSolicitud;
+import com.servify.solicitudes.domain.model.SolicitudServicio;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,73 +31,104 @@ public class ResponderDistribucionSolicitudService implements ResponderDistribuc
 
     @Override
     public void responder(ResponderDistribucionSolicitudCommand command) {
-        // TODO implementar respuesta de distribución por parte del prestador.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - validar que distribucionSolicitudId, prestadorId y tipoRespuesta no sean nulos
-        // - buscar la distribución mediante DistribucionSolicitudRepositoryPort
-        // - verificar que la distribución exista
-        // - verificar que pertenezca al prestador indicado
-        // - verificar que la distribución pueda ser respondida
-        // - verificar que la solicitud asociada siga activa y disponible para respuesta
-        // - aplicar la respuesta correspondiente (ACEPTAR o RECHAZAR)
-        // - registrar la fecha de respuesta
-        // - persistir la distribución actualizada
-        //
-        // Si la respuesta es ACEPTAR, más adelante este caso de uso podrá coordinar
-        // el inicio del proceso de asignación efectiva.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Responde una distribución: el prestador acepta o rechaza una distribución recibida.
+        // - valida pertenencia, estado de la distribución y la solicitud asociada
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getDistribucionSolicitudId() == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        if (command.getPrestadorId() == null) {
+            throw new IllegalArgumentException("prestadorId no puede ser nulo");
+        }
+        if (command.getTipoRespuesta() == null) {
+            throw new IllegalArgumentException("tipoRespuesta no puede ser nulo");
+        }
+
+        DistribucionSolicitud distribucion = obtenerDistribucionExistente(command.getDistribucionSolicitudId());
+        validarPertenenciaPrestador(distribucion, command.getPrestadorId());
+        validarRespuestaPermitida(distribucion);
+        validarSolicitudAsociadaActiva(distribucion);
+
+        LocalDateTime fechaRespuesta = obtenerFechaActual();
+        aplicarRespuesta(distribucion, command.getTipoRespuesta(), fechaRespuesta);
+        persistirDistribucion(distribucion);
     }
 
     protected DistribucionSolicitud obtenerDistribucionExistente(UUID distribucionSolicitudId) {
-        // TODO implementar búsqueda obligatoria de distribución por id.
-        // Debe recuperar la distribución desde DistribucionSolicitudRepositoryPort
-        // y lanzar la excepción correspondiente si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitudId == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarPorId(distribucionSolicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribución no encontrada: " + distribucionSolicitudId));
     }
 
     protected void validarPertenenciaPrestador(DistribucionSolicitud distribucionSolicitud, UUID prestadorId) {
-        // TODO implementar validación de pertenencia al prestador.
-        // Debe verificar que la distribución corresponda al prestador que intenta responderla.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("Distribución no puede ser nula");
+        }
+        if (prestadorId == null) {
+            throw new IllegalArgumentException("prestadorId no puede ser nulo");
+        }
+        if (!distribucionSolicitud.perteneceAPrestador(prestadorId)) {
+            throw new IllegalArgumentException("El prestador no es propietario de la distribución");
+        }
     }
 
     protected void validarRespuestaPermitida(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar validación previa a la respuesta.
-        // Debe verificar que la distribución:
-        // - no esté cerrada
-        // - no esté expirada
-        // - no haya sido respondida definitivamente
-        // - y siga en un estado apto para responderse
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("Distribución no puede ser nula");
+        }
+        if (distribucionSolicitud.estaCerrada()) {
+            throw new IllegalStateException("La distribución ya está cerrada");
+        }
+        if (distribucionSolicitud.estaExpirada()) {
+            throw new IllegalStateException("La distribución está expirada");
+        }
+        if (!distribucionSolicitud.puedeSerRespondida()) {
+            throw new IllegalStateException("La distribución no puede ser respondida en su estado actual");
+        }
     }
 
     protected void validarSolicitudAsociadaActiva(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar validación de solicitud asociada.
-        // Debe verificar, utilizando SolicitudServicioRepositoryPort, que la solicitud
-        // vinculada a la distribución siga activa y disponible para ser respondida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("Distribución no puede ser nula");
+        }
+        UUID solicitudId = distribucionSolicitud.getSolicitudId();
+        if (solicitudId == null) {
+            throw new IllegalStateException("La distribución no tiene solicitud asociada");
+        }
+        SolicitudServicio solicitud = this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalStateException("Solicitud asociada no encontrada: " + solicitudId));
+        if (!solicitud.puedeRecibirRespuestas()) {
+            throw new IllegalStateException("La solicitud asociada no está disponible para recibir respuestas");
+        }
     }
 
     protected void aplicarRespuesta(DistribucionSolicitud distribucionSolicitud,
                                     TipoRespuestaDistribucion tipoRespuesta,
                                     LocalDateTime fechaRespuesta) {
-        // TODO implementar aplicación de la respuesta.
-        // Debe resolver la transición según el valor recibido:
-        // - ACEPTAR -> distribucionSolicitud.aceptar(fechaRespuesta)
-        // - RECHAZAR -> distribucionSolicitud.rechazar(fechaRespuesta)
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (tipoRespuesta == null) {
+            throw new IllegalArgumentException("tipoRespuesta no puede ser nulo");
+        }
+        if (TipoRespuestaDistribucion.ACEPTAR.equals(tipoRespuesta)) {
+            distribucionSolicitud.aceptar(fechaRespuesta);
+        } else if (TipoRespuestaDistribucion.RECHAZAR.equals(tipoRespuesta)) {
+            distribucionSolicitud.rechazar(fechaRespuesta);
+        } else {
+            throw new IllegalArgumentException("Tipo de respuesta no soportado: " + tipoRespuesta);
+        }
     }
 
     protected void persistirDistribucion(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar persistencia de la distribución actualizada.
-        // Debe delegar el guardado en DistribucionSolicitudRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("Distribución no puede ser nula");
+        }
+        this.distribucionSolicitudRepositoryPort.guardar(distribucionSolicitud);
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtención de fecha actual.
-        // Debe centralizar la fecha/hora usada al registrar la respuesta del prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return LocalDateTime.now();
     }
 }

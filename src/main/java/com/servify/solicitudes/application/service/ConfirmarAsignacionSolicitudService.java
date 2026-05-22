@@ -33,69 +33,148 @@ public class ConfirmarAsignacionSolicitudService implements ConfirmarAsignacionS
 
     @Override
     public AsignacionServicioResult confirmar(ConfirmarAsignacionSolicitudCommand command) {
-        // TODO implementar confirmacion de asignacion.
-        // Debe:
-        // - validar command y sus identificadores obligatorios
-        // - recuperar solicitud y distribucion existentes
-        // - verificar que la solicitud pertenezca al solicitante indicado
-        // - verificar que la distribucion corresponda a la solicitud
-        // - verificar que la distribucion haya sido aceptada o sea resoluble por contraoferta aceptada
-        // - validar asignacion unica con PoliticaAsignacionUnica
-        // - construir o activar la asignacion efectiva
-        // - marcar la solicitud como asignada
-        // - cerrar distribuciones activas restantes de la solicitud
-        // - persistir los cambios mediante los repositorios del modulo
-        // - devolver AsignacionServicioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Confirma la asignación de una solicitud basada en una distribución enviada.
+        // - valida la pertenencia del solicitante
+        // - crea la entidad AsignacionServicio y cierra distribuciones si procede
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getSolicitudId() == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        if (command.getDistribucionSolicitudId() == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        if (command.getSolicitanteId() == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+
+        SolicitudServicio solicitud = obtenerSolicitudExistente(command.getSolicitudId());
+        DistribucionSolicitud distribucion = obtenerDistribucionExistente(command.getDistribucionSolicitudId());
+
+        validarSolicitudDelSolicitante(solicitud, command.getSolicitanteId());
+        validarDistribucionConfirmable(solicitud, distribucion);
+
+        // validar politica de asignacion unica
+        java.util.List<AsignacionServicio> asignacionesExistentes = new java.util.ArrayList<>();
+        this.asignacionServicioRepositoryPort.buscarPorSolicitudId(solicitud.getId()).ifPresent(asignacionesExistentes::add);
+        if (!this.politicaAsignacionUnica.puedeAsignarse(solicitud, asignacionesExistentes)) {
+            throw new IllegalStateException("No se permite asignación única para esta solicitud");
+        }
+
+        LocalDateTime ahora = obtenerFechaActual();
+        AsignacionServicio asignacion = construirAsignacion(solicitud, distribucion, ahora);
+        AsignacionServicio asignacionGuardada = this.asignacionServicioRepositoryPort.guardar(asignacion);
+
+        solicitud.marcarComoAsignada();
+        this.solicitudServicioRepositoryPort.guardar(solicitud);
+
+        if (this.politicaAsignacionUnica.requiereCerrarDistribucionesRestantes()) {
+            cerrarDistribucionesRestantes(solicitud.getId(), distribucion.getId());
+        }
+
+        return construirResultado(asignacionGuardada);
     }
 
     protected SolicitudServicio obtenerSolicitudExistente(UUID solicitudId) {
-        // TODO implementar busqueda obligatoria de solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada: " + solicitudId));
     }
 
     protected DistribucionSolicitud obtenerDistribucionExistente(UUID distribucionSolicitudId) {
-        // TODO implementar busqueda obligatoria de distribucion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (distribucionSolicitudId == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarPorId(distribucionSolicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribución no encontrada: " + distribucionSolicitudId));
     }
 
     protected void validarSolicitudDelSolicitante(SolicitudServicio solicitudServicio,
                                                   UUID solicitanteId) {
-        // TODO implementar validacion de pertenencia de la solicitud al solicitante.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("Solicitud no puede ser nula");
+        }
+        if (solicitanteId == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        if (!solicitudServicio.getSolicitanteId().equals(solicitanteId)) {
+            throw new IllegalArgumentException("El solicitante no es propietario de la solicitud");
+        }
     }
 
     protected void validarDistribucionConfirmable(SolicitudServicio solicitudServicio,
                                                   DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar validacion de distribucion confirmable.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudServicio == null || distribucionSolicitud == null) {
+            throw new IllegalArgumentException("Solicitud o distribución no puede ser nula");
+        }
+        if (!distribucionSolicitud.getSolicitudId().equals(solicitudServicio.getId())) {
+            throw new IllegalStateException("La distribución no corresponde a la solicitud indicada");
+        }
+        if (!(distribucionSolicitud.estaAceptada() || distribucionSolicitud.estaContraofertada())) {
+            throw new IllegalStateException("La distribución no se encuentra en un estado confirmable");
+        }
     }
 
     protected AsignacionServicio construirAsignacion(SolicitudServicio solicitudServicio,
                                                      DistribucionSolicitud distribucionSolicitud,
                                                      LocalDateTime fechaAsignacion) {
-        // TODO implementar construccion de asignacion de servicio.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        java.util.UUID id = generarIdAsignacion();
+        java.math.BigDecimal precio = solicitudServicio.getPrecioReferencia();
+        return new AsignacionServicio(
+            id,
+            solicitudServicio.getId(),
+            distribucionSolicitud.getId(),
+            distribucionSolicitud.getPrestadorId(),
+            distribucionSolicitud.getPublicacionServicioId(),
+            precio,
+            com.servify.solicitudes.domain.enumtype.EstadoAsignacion.ACTIVA,
+            fechaAsignacion,
+            null
+        );
     }
 
     protected void cerrarDistribucionesRestantes(UUID solicitudId,
                                                  UUID distribucionConfirmadaId) {
-        // TODO implementar cierre de otras distribuciones activas de la misma solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            return;
+        }
+        java.util.List<DistribucionSolicitud> activas = this.distribucionSolicitudRepositoryPort.buscarActivasPorSolicitudId(solicitudId);
+        if (activas == null || activas.isEmpty()) {
+            return;
+        }
+        for (DistribucionSolicitud d : activas) {
+            if (d == null) continue;
+            if (distribucionConfirmadaId != null && d.getId().equals(distribucionConfirmadaId)) continue;
+            d.cerrar();
+            this.distribucionSolicitudRepositoryPort.guardar(d);
+        }
     }
 
     protected AsignacionServicioResult construirResultado(AsignacionServicio asignacionServicio) {
-        // TODO implementar mapeo de AsignacionServicio a AsignacionServicioResult.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (asignacionServicio == null) {
+            return null;
+        }
+        return AsignacionServicioResult.builder()
+                .id(asignacionServicio.getId())
+                .solicitudId(asignacionServicio.getSolicitudId())
+                .distribucionSolicitudId(asignacionServicio.getDistribucionSolicitudId())
+                .prestadorId(asignacionServicio.getPrestadorId())
+                .publicacionServicioId(asignacionServicio.getPublicacionServicioId())
+                .precioAcordado(asignacionServicio.getPrecioAcordado())
+                .estado(asignacionServicio.getEstado())
+                .fechaAsignacion(asignacionServicio.getFechaAsignacion())
+                .fechaFinalizacion(asignacionServicio.getFechaFinalizacion())
+                .build();
     }
 
     protected UUID generarIdAsignacion() {
-        // TODO implementar generacion de identificador de asignacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtencion centralizada de fecha actual.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return LocalDateTime.now();
     }
 }

@@ -30,55 +30,116 @@ public class ResolverContraofertaService implements ResolverContraofertaUseCase 
 
     @Override
     public ContraofertaResult resolver(ResolverContraofertaCommand command) {
-        // TODO implementar resolucion de contraoferta.
-        // Debe:
-        // - validar command y decision
-        // - recuperar contraoferta, distribucion y solicitud asociadas
-        // - validar que la solicitud pertenezca al solicitante indicado
-        // - validar que la contraoferta continue pendiente y resoluble
-        // - aceptar o rechazar la contraoferta segun TipoDecisionSolicitud
-        // - si se acepta, dejar la distribucion en estado compatible con asignacion
-        // - persistir contraoferta y distribucion si corresponde
-        // - devolver ContraofertaResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Resuelve una contraoferta emitida por un prestador.
+        // - valida permisos del solicitante
+        // - aplica decisión (aceptar/rechazar) y actualiza estados relacionados
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getContraofertaId() == null) {
+            throw new IllegalArgumentException("contraofertaId no puede ser nulo");
+        }
+        if (command.getSolicitanteId() == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        if (command.getDecision() == null) {
+            throw new IllegalArgumentException("decision no puede ser nula");
+        }
+
+        Contraoferta contraoferta = obtenerContraofertaExistente(command.getContraofertaId());
+        DistribucionSolicitud distribucion = obtenerDistribucionExistente(contraoferta.getDistribucionSolicitudId());
+        SolicitudServicio solicitud = obtenerSolicitudExistente(distribucion.getSolicitudId());
+
+        validarSolicitantePuedeResolver(solicitud, command.getSolicitanteId());
+
+        if (!contraoferta.puedeSerResuelta()) {
+            throw new IllegalStateException("La contraoferta no puede ser resuelta");
+        }
+
+        LocalDateTime ahora = obtenerFechaActual();
+        aplicarDecision(contraoferta, distribucion, command.getDecision(), ahora);
+
+        this.contraofertaRepositoryPort.guardar(contraoferta);
+        // persistir distribucion si cambió su estado
+        this.distribucionSolicitudRepositoryPort.guardar(distribucion);
+
+        return construirResultado(contraoferta);
     }
 
     protected Contraoferta obtenerContraofertaExistente(UUID contraofertaId) {
-        // TODO implementar busqueda obligatoria de contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (contraofertaId == null) {
+            throw new IllegalArgumentException("contraofertaId no puede ser nulo");
+        }
+        return this.contraofertaRepositoryPort.buscarPorId(contraofertaId)
+                .orElseThrow(() -> new IllegalArgumentException("Contraoferta no encontrada: " + contraofertaId));
     }
 
     protected DistribucionSolicitud obtenerDistribucionExistente(UUID distribucionSolicitudId) {
-        // TODO implementar busqueda obligatoria de distribucion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (distribucionSolicitudId == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarPorId(distribucionSolicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribución no encontrada: " + distribucionSolicitudId));
     }
 
     protected SolicitudServicio obtenerSolicitudExistente(UUID solicitudId) {
-        // TODO implementar busqueda obligatoria de solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada: " + solicitudId));
     }
 
     protected void validarSolicitantePuedeResolver(SolicitudServicio solicitudServicio,
                                                    UUID solicitanteId) {
-        // TODO implementar validacion de solicitante autorizado para resolver la contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("Solicitud no puede ser nula");
+        }
+        if (solicitanteId == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        if (!solicitudServicio.getSolicitanteId().equals(solicitanteId)) {
+            throw new IllegalArgumentException("El solicitante no está autorizado para resolver la contraoferta");
+        }
     }
 
     protected void aplicarDecision(Contraoferta contraoferta,
                                    DistribucionSolicitud distribucionSolicitud,
                                    TipoDecisionSolicitud decision,
                                    LocalDateTime fechaResolucion) {
-        // TODO implementar aplicacion de decision ACEPTAR o RECHAZAR.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (contraoferta == null || distribucionSolicitud == null || decision == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para aplicar decisión");
+        }
+        if (decision == TipoDecisionSolicitud.ACEPTAR) {
+            contraoferta.aceptar(fechaResolucion);
+            // marcar la distribución como aceptada para permitir asignación
+            distribucionSolicitud.aceptar(fechaResolucion);
+        } else if (decision == TipoDecisionSolicitud.RECHAZAR) {
+            contraoferta.rechazar(fechaResolucion);
+            // dejar la distribución en su estado previo (normalmente ENVIADA)
+        } else {
+            throw new IllegalArgumentException("Decisión no soportada: " + decision);
+        }
     }
 
     protected ContraofertaResult construirResultado(Contraoferta contraoferta) {
-        // TODO implementar mapeo de Contraoferta a ContraofertaResult.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (contraoferta == null) {
+            return null;
+        }
+        return ContraofertaResult.builder()
+                .id(contraoferta.getId())
+                .distribucionSolicitudId(contraoferta.getDistribucionSolicitudId())
+                .prestadorId(contraoferta.getPrestadorId())
+                .precioOriginal(contraoferta.getPrecioOriginal())
+                .precioPropuesto(contraoferta.getPrecioPropuesto())
+                .mensaje(contraoferta.getMensaje())
+                .estado(contraoferta.getEstado())
+                .fechaEmision(contraoferta.getFechaEmision())
+                .fechaResolucion(contraoferta.getFechaResolucion())
+                .build();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtencion centralizada de fecha actual.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return LocalDateTime.now();
     }
 }

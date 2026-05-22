@@ -18,13 +18,27 @@ public class ObtenerMedidasAdministrativasDeUsuarioService implements ObtenerMed
 
     @Override
     public List<MedidaAdministrativaUsuarioResult> obtenerPorUsuarioId(UUID usuarioId) {
-        // TODO implementar consulta de medidas administrativas por usuario.
-        // Debe validar usuarioId, consultar repositorio y mapear resultados.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Lista las medidas administrativas que afectan a un usuario dado.
+        if (usuarioId == null) {
+            throw new IllegalArgumentException("usuarioId no puede ser nulo");
+        }
+        List<MedidaAdministrativaUsuario> medidas = this.medidaAdministrativaUsuarioRepositoryPort.buscarPorUsuarioId(usuarioId);
+        return medidas.stream().map(this::construirResultado).toList();
     }
 
     protected MedidaAdministrativaUsuarioResult construirResultado(MedidaAdministrativaUsuario medidaAdministrativaUsuario) {
-        // TODO implementar mapeo de MedidaAdministrativaUsuario a result.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (medidaAdministrativaUsuario == null) {
+            return null;
+        }
+        return MedidaAdministrativaUsuarioResult.builder()
+                .id(medidaAdministrativaUsuario.getId())
+                .usuarioId(medidaAdministrativaUsuario.getUsuarioId())
+                .administradorId(medidaAdministrativaUsuario.getAdministradorId())
+                .tipoMedida(medidaAdministrativaUsuario.getTipoMedida())
+                .motivo(medidaAdministrativaUsuario.getMotivo())
+                .fechaAplicacion(medidaAdministrativaUsuario.getFechaAplicacion())
+                .fechaFinVigencia(medidaAdministrativaUsuario.getFechaFinVigencia())
+                .activa(medidaAdministrativaUsuario.getActiva())
+                .build();
     }
 }

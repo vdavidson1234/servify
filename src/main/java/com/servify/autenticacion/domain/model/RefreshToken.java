@@ -1,9 +1,9 @@
 package com.servify.autenticacion.domain.model;
 
-import com.servify.shared.domain.model.BaseEntity;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.servify.shared.domain.model.BaseEntity;
 
 public class RefreshToken extends BaseEntity {
 
@@ -65,31 +65,32 @@ public class RefreshToken extends BaseEntity {
     }
 
     public boolean estaActivo() {
-        // TODO implementar verificacion de token activo.
-        // Debe devolver true si el refresh token puede utilizarse para renovar sesion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return this.activo != null && this.activo && !fueRevocado();
     }
 
     public boolean estaExpirado(LocalDateTime fechaActual) {
-        // TODO implementar verificacion de expiracion.
-        // Debe comparar la fecha actual contra la fecha de expiracion configurada.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (this.fechaExpiracion == null || fechaActual == null) {
+            return false;
+        }
+        return fechaActual.isAfter(this.fechaExpiracion);
     }
 
     public boolean fueRevocado() {
-        // TODO implementar verificacion de revocacion.
-        // Debe devolver true cuando exista fecha de revocacion o estado inactivo.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return this.fechaRevocacion != null || (this.activo != null && !this.activo);
     }
 
     public boolean perteneceAUsuario(UUID usuarioId) {
-        // TODO implementar validacion de pertenencia del token al usuario.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (usuarioId == null) {
+            return false;
+        }
+        return this.usuarioId.equals(usuarioId);
     }
 
     public void revocar(LocalDateTime fechaRevocacion) {
-        // TODO implementar revocacion del refresh token.
-        // Debe marcarlo como inactivo y registrar la fecha de revocacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (fechaRevocacion == null) {
+            throw new IllegalArgumentException("La fecha de revocación no puede ser nula");
+        }
+        this.activo = false;
+        this.fechaRevocacion = fechaRevocacion;
     }
 }

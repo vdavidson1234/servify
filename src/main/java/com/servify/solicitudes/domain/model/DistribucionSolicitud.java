@@ -89,103 +89,92 @@ public class DistribucionSolicitud extends BaseEntity {
     }
 
     public boolean estaEnviada() {
-        // TODO implementar verificación de estado ENVIADA.
-        // Debe devolver true cuando la distribución fue enviada
-        // y todavía no recibió una respuesta válida del prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.ENVIADA;
     }
 
     public boolean estaAceptada() {
-        // TODO implementar verificación de estado ACEPTADA.
-        // Debe devolver true cuando el prestador aceptó esta distribución.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.ACEPTADA;
     }
 
     public boolean estaRechazada() {
-        // TODO implementar verificación de estado RECHAZADA.
-        // Debe devolver true cuando el prestador rechazó esta distribución.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.RECHAZADA;
     }
 
     public boolean estaContraofertada() {
-        // TODO implementar verificación de estado CONTRAOFERTADA.
-        // Debe devolver true cuando el prestador respondió mediante una contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.CONTRAOFERTADA;
     }
 
     public boolean estaExpirada() {
-        // TODO implementar verificación de estado EXPIRADA.
-        // Debe devolver true cuando la distribución superó su tiempo de respuesta
-        // sin recibir contestación válida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.EXPIRADA;
     }
 
     public boolean estaCerrada() {
-        // TODO implementar verificación de estado CERRADA.
-        // Debe devolver true cuando la distribución fue cerrada por el sistema,
-        // por ejemplo al asignarse la solicitud a otro prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.CERRADA;
     }
 
     public boolean fueRespondida() {
-        // TODO implementar validación de respuesta emitida.
-        // Debe devolver true cuando la distribución ya tenga una respuesta final
-        // o una respuesta que impida seguir operando sobre ella.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.ACEPTADA || 
+               this.estado == EstadoDistribucion.RECHAZADA ||
+               this.estado == EstadoDistribucion.CONTRAOFERTADA ||
+               this.estado == EstadoDistribucion.EXPIRADA ||
+               this.estado == EstadoDistribucion.CERRADA;
     }
 
     public boolean puedeSerRespondida() {
-        // TODO implementar validación para responder la distribución.
-        // Debe verificar que la distribución siga activa para el prestador
-        // y que no se encuentre expirada, cerrada o respondida definitivamente.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoDistribucion.ENVIADA;
     }
 
     public boolean perteneceAPrestador(UUID prestadorId) {
-        // TODO implementar validación de pertenencia.
-        // Debe verificar si esta distribución corresponde al prestador indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null) {
+            return false;
+        }
+        return this.prestadorId.equals(prestadorId);
     }
 
     public void marcarComoEnviada() {
-        // TODO implementar transición a estado ENVIADA.
-        // Debe utilizarse al crear o despachar la distribución al prestador,
-        // registrando correctamente la fecha de envío si corresponde.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.estado = EstadoDistribucion.ENVIADA;
     }
 
     public void aceptar(LocalDateTime fechaRespuesta) {
-        // TODO implementar aceptación de la distribución.
-        // Debe cambiar el estado a ACEPTADA, registrar la fecha de respuesta
-        // y validar que la distribución todavía pueda ser respondida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaRespuesta == null) {
+            throw new IllegalArgumentException("La fecha de respuesta no puede ser nula");
+        }
+        if (!puedeSerRespondida()) {
+            throw new IllegalArgumentException("La distribución no puede ser respondida en su estado actual");
+        }
+        this.estado = EstadoDistribucion.ACEPTADA;
+        this.fechaRespuesta = fechaRespuesta;
     }
 
     public void rechazar(LocalDateTime fechaRespuesta) {
-        // TODO implementar rechazo de la distribución.
-        // Debe cambiar el estado a RECHAZADA, registrar la fecha de respuesta
-        // y validar que la distribución todavía pueda ser respondida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaRespuesta == null) {
+            throw new IllegalArgumentException("La fecha de respuesta no puede ser nula");
+        }
+        if (!puedeSerRespondida()) {
+            throw new IllegalArgumentException("La distribución no puede ser respondida en su estado actual");
+        }
+        this.estado = EstadoDistribucion.RECHAZADA;
+        this.fechaRespuesta = fechaRespuesta;
     }
 
     public void marcarComoContraofertada(LocalDateTime fechaRespuesta) {
-        // TODO implementar transición a estado CONTRAOFERTADA.
-        // Debe cambiar el estado, registrar la fecha de respuesta
-        // y validar que la distribución admita contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaRespuesta == null) {
+            throw new IllegalArgumentException("La fecha de respuesta no puede ser nula");
+        }
+        if (!puedeSerRespondida()) {
+            throw new IllegalArgumentException("La distribución no puede ser respondida en su estado actual");
+        }
+        this.estado = EstadoDistribucion.CONTRAOFERTADA;
+        this.fechaRespuesta = fechaRespuesta;
     }
 
     public void expirar(LocalDateTime fechaExpiracion) {
-        // TODO implementar expiración de la distribución.
-        // Debe cambiar el estado a EXPIRADA cuando se supere el tiempo permitido
-        // sin respuesta válida del prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (this.estaEnviada()) {
+            this.estado = EstadoDistribucion.EXPIRADA;
+        }
     }
 
     public void cerrar() {
-        // TODO implementar cierre de la distribución.
-        // Debe cambiar el estado a CERRADA cuando la solicitud ya no deba
-        // seguir disponible para este prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.estado = EstadoDistribucion.CERRADA;
     }
 }

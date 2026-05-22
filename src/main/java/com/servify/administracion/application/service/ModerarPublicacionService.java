@@ -1,11 +1,11 @@
 package com.servify.administracion.application.service;
 
+import java.util.UUID;
+
 import com.servify.administracion.application.dto.ModerarPublicacionCommand;
 import com.servify.administracion.application.port.in.ModerarPublicacionUseCase;
 import com.servify.administracion.application.port.out.PublicacionModerablePort;
 import com.servify.administracion.application.port.out.UsuarioAdministrablePort;
-
-import java.util.UUID;
 
 public class ModerarPublicacionService implements ModerarPublicacionUseCase {
 
@@ -20,29 +20,61 @@ public class ModerarPublicacionService implements ModerarPublicacionUseCase {
 
     @Override
     public void moderar(ModerarPublicacionCommand command) {
-        // TODO implementar moderacion de publicacion.
-        // Debe:
-        // - validar command
-        // - validar administrador mediante UsuarioAdministrablePort
-        // - verificar existencia de la publicacion mediante PublicacionModerablePort
-        // - validar estado destino permitido para moderacion
-        // - delegar cambio de estado a PublicacionModerablePort
-        // - no duplicar gestion de categorias ni reglas internas del modulo publicaciones
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Modera una publicación: valida administrador y actualiza el estado de la publicación.
+        validarAdministrador(command.getAdministradorId());
+        validarPublicacion(command.getPublicacionServicioId());
+        validarEstadoDestino(command.getEstadoDestino());
+        
+        publicacionModerablePort.moderarPublicacion(
+                command.getPublicacionServicioId(),
+                command.getEstadoDestino(),
+                command.getMotivo()
+        );
     }
 
     protected void validarAdministrador(UUID administradorId) {
-        // TODO implementar validacion de administrador.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (administradorId == null) {
+            throw new IllegalArgumentException("El ID del administrador no puede ser nulo");
+        }
+        
+        if (!usuarioAdministrablePort.existeUsuario(administradorId)) {
+            throw new IllegalArgumentException("El usuario administrador no existe");
+        }
+        
+        if (!usuarioAdministrablePort.esAdministrador(administradorId)) {
+            throw new IllegalArgumentException("El usuario no tiene permisos de administrador");
+        }
     }
 
     protected void validarPublicacion(UUID publicacionServicioId) {
-        // TODO implementar validacion de existencia de publicacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (publicacionServicioId == null) {
+            throw new IllegalArgumentException("El ID de la publicación no puede ser nulo");
+        }
+        
+        if (!publicacionModerablePort.existePublicacion(publicacionServicioId)) {
+            throw new IllegalArgumentException("La publicación no existe");
+        }
     }
 
     protected void validarEstadoDestino(String estadoDestino) {
-        // TODO implementar validacion de estado destino permitido por moderacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (estadoDestino == null || estadoDestino.trim().isEmpty()) {
+            throw new IllegalArgumentException("El estado destino no puede ser nulo o vacío");
+        }
+        
+        // Estados válidos para moderación
+        String[] estadosValidos = {"APROBADA", "RECHAZADA", "SUSPENDIDA"};
+        
+        boolean esValido = false;
+        for (String estado : estadosValidos) {
+            if (estado.equalsIgnoreCase(estadoDestino)) {
+                esValido = true;
+                break;
+            }
+        }
+        
+        if (!esValido) {
+            throw new IllegalArgumentException(
+                    "El estado destino debe ser uno de: APROBADA, RECHAZADA, SUSPENDIDA");
+        }
     }
 }

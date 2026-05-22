@@ -21,41 +21,79 @@ public class ObtenerSolicitudServicioService implements ObtenerSolicitudServicio
     }
 
     @Override
+    /**
+     * Recupera una solicitud por su identificador.
+     * - Valida que `solicitudId` no sea nulo.
+     * - Consulta el repositorio y, si existe, mapea la entidad a DTO.
+     * - Retorna `Optional.empty()` cuando no existe.
+     */
     public Optional<SolicitudServicioResult> obtenerPorId(UUID solicitudId) {
-        // TODO implementar consulta de solicitud por id.
-        // Debe:
-        // - validar que el solicitudId no sea nulo
-        // - consultar la solicitud mediante SolicitudServicioRepositoryPort
-        // - mapear el resultado a SolicitudServicioResult si existe
-        // - devolver Optional.empty() si no existe una solicitud con ese identificador
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+
+        Optional<SolicitudServicio> opt = solicitudServicioRepositoryPort.buscarPorId(solicitudId);
+        return opt.map(this::construirResultado);
     }
 
+    /**
+     * Mapea la entidad `SolicitudServicio` a `SolicitudServicioResult`.
+     * Incluye mapeo de `Ubicacion` y `DisponibilidadHoraria` mediante helpers.
+     */
     protected SolicitudServicioResult construirResultado(SolicitudServicio solicitudServicio) {
-        // TODO implementar mapeo de SolicitudServicio a SolicitudServicioResult.
-        // Debe incluir:
-        // - id de la solicitud
-        // - solicitanteId
-        // - categoriaServicioId
-        // - modalidad
-        // - ubicación mapeada a UbicacionSolicitudResult
-        // - disponibilidad requerida mapeada a DisponibilidadHorariaResult
-        // - descripción de necesidad
-        // - precio de referencia
-        // - estado
-        // - fecha de solicitud
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("solicitudServicio no puede ser nulo");
+        }
+
+        return new SolicitudServicioResult(
+                solicitudServicio.getId(),
+                solicitudServicio.getSolicitanteId(),
+                solicitudServicio.getCategoriaServicioId(),
+                solicitudServicio.getModalidadServicio(),
+                construirUbicacionResult(solicitudServicio.getUbicacion()),
+                construirDisponibilidadResult(solicitudServicio.getDisponibilidadRequerida()),
+                solicitudServicio.getDescripcionNecesidad(),
+                solicitudServicio.getPrecioReferencia(),
+                solicitudServicio.getEstado(),
+                solicitudServicio.getFechaSolicitud()
+        );
     }
 
+    /**
+     * Convierte el Value Object `Ubicacion` a su DTO `UbicacionSolicitudResult`.
+     * Devuelve `null` si la ubicación es nula (flujo opcional).
+     */
     protected UbicacionSolicitudResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionSolicitudResult.
-        // Debe contemplar el caso de ubicación nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (ubicacion == null) {
+            return null;
+        }
+
+        return new UbicacionSolicitudResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
+    /**
+     * Convierte el Value Object `DisponibilidadHoraria` a su DTO `DisponibilidadHorariaResult`.
+     * Devuelve `null` si la disponibilidad es nula.
+     */
     protected DisponibilidadHorariaResult construirDisponibilidadResult(DisponibilidadHoraria disponibilidadHoraria) {
-        // TODO implementar mapeo de DisponibilidadHoraria a DisponibilidadHorariaResult.
-        // Debe contemplar el caso de disponibilidad nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (disponibilidadHoraria == null) {
+            return null;
+        }
+
+        return new DisponibilidadHorariaResult(
+                disponibilidadHoraria.getDiaSemana(),
+                disponibilidadHoraria.getHoraDesde(),
+                disponibilidadHoraria.getHoraHasta()
+        );
     }
 }

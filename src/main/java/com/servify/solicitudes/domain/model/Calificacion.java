@@ -1,9 +1,9 @@
 package com.servify.solicitudes.domain.model;
 
-import com.servify.shared.domain.model.BaseEntity;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.servify.shared.domain.model.BaseEntity;
 
 //La dejé minimalista porque en el MVP no hay reseña textual, solo estrellas.
 //Más adelante, si agregan comentarios o feedback escrito, se puede extender con algo como:
@@ -64,34 +64,34 @@ public class Calificacion extends BaseEntity {
     }
 
     public boolean esPuntajeValido() {
-        // TODO implementar validación de puntaje.
-        // Debe verificar que el puntaje no sea nulo
-        // y que esté dentro del rango permitido por la plataforma (1 a 5).
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.puntaje != null && this.puntaje >= 1 && this.puntaje <= 5;
     }
 
     public boolean perteneceASolicitud(UUID solicitudId) {
-        // TODO implementar validación de pertenencia a la solicitud.
-        // Debe verificar si esta calificación corresponde a la solicitud indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            return false;
+        }
+        return this.solicitudId.equals(solicitudId);
     }
 
     public boolean perteneceAPrestador(UUID prestadorId) {
-        // TODO implementar validación de pertenencia al prestador.
-        // Debe verificar si esta calificación corresponde al prestador indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null) {
+            return false;
+        }
+        return this.prestadorId.equals(prestadorId);
     }
 
     public boolean fueEmitidaPor(UUID solicitanteId) {
-        // TODO implementar validación del emisor.
-        // Debe verificar si esta calificación fue emitida por el solicitante indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitanteId == null) {
+            return false;
+        }
+        return this.solicitanteId.equals(solicitanteId);
     }
 
     public void actualizarPuntaje(Integer puntaje) {
-        // TODO implementar actualización de puntaje.
-        // Debe validar que el nuevo puntaje esté dentro del rango permitido
-        // y que el cambio esté habilitado por las reglas del negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (puntaje == null || puntaje < 1 || puntaje > 5) {
+            throw new IllegalArgumentException("El puntaje debe ser un valor entre 1 y 5");
+        }
+        this.puntaje = puntaje;
     }
 }

@@ -24,75 +24,112 @@ public class CrearSolicitudServicioService implements CrearSolicitudServicioUseC
 
     @Override
     public SolicitudServicioResult crear(CrearSolicitudServicioCommand command) {
-        // TODO implementar creación de solicitud de servicio.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - validar que solicitanteId y categoriaServicioId no sean nulos
-        // - validar modalidad, ubicación y disponibilidad requerida
-        // - construir la entidad SolicitudServicio con estado inicial válido
-        // - persistir la solicitud mediante SolicitudServicioRepositoryPort
-        // - mapear la entidad persistida a SolicitudServicioResult
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Crea una nueva `SolicitudServicio` a partir del comando.
+        // - Valida los campos obligatorios y las invariantes del VO (ubicación, disponibilidad).
+        // - Persiste la entidad mediante el repositorio y devuelve el DTO resultante.
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getSolicitanteId() == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        if (command.getCategoriaServicioId() == null) {
+            throw new IllegalArgumentException("categoriaServicioId no puede ser nulo");
+        }
+        if (command.getModalidadServicio() == null) {
+            throw new IllegalArgumentException("modalidadServicio no puede ser nula");
+        }
+        if (command.getUbicacion() == null) {
+            throw new IllegalArgumentException("ubicacion no puede ser nula");
+        }
+        if (!command.getUbicacion().esAptaParaBusquedaGeografica()) {
+            throw new IllegalArgumentException("La ubicación no es apta para búsqueda geográfica");
+        }
+        if (command.getDisponibilidadRequerida() == null) {
+            throw new IllegalArgumentException("disponibilidadRequerida no puede ser nula");
+        }
+        if (!command.getDisponibilidadRequerida().esRangoHorarioValido()) {
+            throw new IllegalArgumentException("La disponibilidad horaria no es válida");
+        }
+
+        SolicitudServicio solicitud = construirSolicitud(command);
+        SolicitudServicio persistida = this.solicitudServicioRepositoryPort.guardar(solicitud);
+        return construirResultado(persistida);
     }
 
     protected SolicitudServicio construirSolicitud(CrearSolicitudServicioCommand command) {
-        // TODO implementar construcción inicial de la solicitud.
-        // Debe crear la entidad SolicitudServicio con:
-        // - id nuevo
-        // - solicitanteId recibido
-        // - categoriaServicioId recibido
-        // - modalidad, ubicación y disponibilidad requerida
-        // - descripción de necesidad
-        // - precio de referencia
-        // - estado inicial adecuado
-        // - fecha actual de creación
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        return new SolicitudServicio(
+                generarIdSolicitud(),
+                command.getSolicitanteId(),
+                command.getCategoriaServicioId(),
+                command.getModalidadServicio(),
+                command.getUbicacion(),
+                command.getDisponibilidadRequerida(),
+                command.getDescripcionNecesidad(),
+                command.getPrecioReferencia(),
+                obtenerEstadoInicial(),
+                obtenerFechaActual()
+        );
     }
 
     protected SolicitudServicioResult construirResultado(SolicitudServicio solicitudServicio) {
-        // TODO implementar mapeo de SolicitudServicio a SolicitudServicioResult.
-        // Debe incluir:
-        // - id de la solicitud
-        // - solicitanteId
-        // - categoriaServicioId
-        // - modalidad
-        // - ubicación mapeada a UbicacionSolicitudResult
-        // - disponibilidad requerida mapeada a DisponibilidadHorariaResult
-        // - descripción de necesidad
-        // - precio de referencia
-        // - estado
-        // - fecha de solicitud
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            return null;
+        }
+        return new SolicitudServicioResult(
+                solicitudServicio.getId(),
+                solicitudServicio.getSolicitanteId(),
+                solicitudServicio.getCategoriaServicioId(),
+                solicitudServicio.getModalidadServicio(),
+                construirUbicacionResult(solicitudServicio.getUbicacion()),
+                construirDisponibilidadResult(solicitudServicio.getDisponibilidadRequerida()),
+                solicitudServicio.getDescripcionNecesidad(),
+                solicitudServicio.getPrecioReferencia(),
+                solicitudServicio.getEstado(),
+                solicitudServicio.getFechaSolicitud()
+        );
     }
 
     protected UbicacionSolicitudResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionSolicitudResult.
-        // Debe contemplar el caso de ubicación nula si el flujo llegara a permitirlo.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (ubicacion == null) {
+            return null;
+        }
+        return new UbicacionSolicitudResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
     protected DisponibilidadHorariaResult construirDisponibilidadResult(DisponibilidadHoraria disponibilidadHoraria) {
-        // TODO implementar mapeo de DisponibilidadHoraria a DisponibilidadHorariaResult.
-        // Debe contemplar el caso de disponibilidad nula si el flujo llegara a permitirlo.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (disponibilidadHoraria == null) {
+            return null;
+        }
+        return new DisponibilidadHorariaResult(
+                disponibilidadHoraria.getDiaSemana(),
+                disponibilidadHoraria.getHoraDesde(),
+                disponibilidadHoraria.getHoraHasta()
+        );
     }
 
     protected EstadoSolicitud obtenerEstadoInicial() {
-        // TODO implementar definición del estado inicial de la solicitud.
-        // Debe devolver el estado con el que una solicitud recién creada
-        // debe iniciar su ciclo de vida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return EstadoSolicitud.BUSCANDO_PRESTADOR;
     }
 
     protected UUID generarIdSolicitud() {
-        // TODO implementar generación de identificador de solicitud.
-        // Por el momento puede resolverse con UUID aleatorio si esa es la estrategia elegida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtención de fecha actual.
-        // Debe centralizar la fecha/hora usada al crear la solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return LocalDateTime.now();
     }
 }

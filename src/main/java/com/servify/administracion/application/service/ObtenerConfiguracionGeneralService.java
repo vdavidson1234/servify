@@ -18,20 +18,34 @@ public class ObtenerConfiguracionGeneralService implements ObtenerConfiguracionG
 
     @Override
     public Optional<ConfiguracionGeneralResult> obtenerVigente() {
-        // TODO implementar consulta de configuracion vigente.
-        // Debe delegar en ConfiguracionGeneralRepositoryPort y mapear si existe.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Obtiene la configuración general vigente si existe.
+        Optional<ConfiguracionGeneral> opt = this.configuracionGeneralRepositoryPort.obtenerVigente();
+        return opt.map(this::construirResultado);
     }
 
     @Override
     public Optional<ConfiguracionGeneralResult> obtenerPorId(UUID configuracionGeneralId) {
-        // TODO implementar consulta de configuracion por id.
-        // Debe validar id, delegar en repositorio y mapear si existe.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Obtiene una configuración por su id.
+        if (configuracionGeneralId == null) {
+            throw new IllegalArgumentException("configuracionGeneralId no puede ser nulo");
+        }
+        Optional<ConfiguracionGeneral> opt = this.configuracionGeneralRepositoryPort.buscarPorId(configuracionGeneralId);
+        return opt.map(this::construirResultado);
     }
 
     protected ConfiguracionGeneralResult construirResultado(ConfiguracionGeneral configuracionGeneral) {
-        // TODO implementar mapeo de ConfiguracionGeneral a result.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (configuracionGeneral == null) {
+            return null;
+        }
+        return ConfiguracionGeneralResult.builder()
+                .id(configuracionGeneral.getId())
+                .radioBusquedaInicialKm(configuracionGeneral.getRadioBusquedaInicialKm())
+                .radioBusquedaExpansionKm(configuracionGeneral.getRadioBusquedaExpansionKm())
+                .tiempoEsperaExpansionMinutos(configuracionGeneral.getTiempoEsperaExpansionMinutos())
+                .validacionIdentidadRequerida(configuracionGeneral.getValidacionIdentidadRequerida())
+                .precioBaseMinimoReferencia(configuracionGeneral.getPrecioBaseMinimoReferencia())
+                .plataformaActiva(configuracionGeneral.getPlataformaActiva())
+                .fechaUltimaActualizacion(configuracionGeneral.getFechaUltimaActualizacion())
+                .build();
     }
 }

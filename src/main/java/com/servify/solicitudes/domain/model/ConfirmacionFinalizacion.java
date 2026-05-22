@@ -73,55 +73,50 @@ public class ConfirmacionFinalizacion extends BaseEntity {
     }
 
     public boolean estaConfirmada() {
-        // TODO implementar verificación de confirmación efectiva.
-        // Debe devolver true cuando la confirmación haya sido realizada válidamente
-        // por la parte correspondiente.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.confirmada != null && this.confirmada;
     }
 
     public boolean esDelSolicitante() {
-        // TODO implementar verificación de rol SOLICITANTE.
-        // Debe devolver true cuando la confirmación haya sido emitida
-        // por el solicitante de la solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.rolConfirmante == RolConfirmante.SOLICITANTE;
     }
 
     public boolean esDelPrestador() {
-        // TODO implementar verificación de rol PRESTADOR.
-        // Debe devolver true cuando la confirmación haya sido emitida
-        // por el prestador asignado al servicio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.rolConfirmante == RolConfirmante.PRESTADOR;
     }
 
     public boolean perteneceAUsuario(UUID usuarioId) {
-        // TODO implementar validación de pertenencia al usuario.
-        // Debe verificar si esta confirmación fue emitida por el usuario indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (usuarioId == null) {
+            return false;
+        }
+        return this.confirmanteId.equals(usuarioId);
     }
 
     public boolean correspondeASolicitud(UUID solicitudId) {
-        // TODO implementar validación de pertenencia a la solicitud.
-        // Debe verificar si esta confirmación corresponde a la solicitud indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            return false;
+        }
+        return this.solicitudId.equals(solicitudId);
     }
 
     public boolean correspondeAAsignacion(UUID asignacionServicioId) {
-        // TODO implementar validación de pertenencia a la asignación.
-        // Debe verificar si esta confirmación corresponde a la asignación indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (asignacionServicioId == null) {
+            return false;
+        }
+        return this.asignacionServicioId.equals(asignacionServicioId);
     }
 
     public void confirmar(LocalDateTime fechaConfirmacion) {
-        // TODO implementar confirmación de finalización.
-        // Debe marcar la confirmación como efectiva, registrar la fecha
-        // y validar que el usuario y la asignación estén habilitados para confirmar.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaConfirmacion == null) {
+            throw new IllegalArgumentException("La fecha de confirmación no puede ser nula");
+        }
+        this.confirmada = true;
+        this.fechaConfirmacion = fechaConfirmacion;
     }
 
     public void actualizarObservacion(String observacion) {
-        // TODO implementar actualización de observación.
-        // Debe validar longitud, contenido y si el cambio está permitido
-        // según el estado actual de la confirmación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (observacion != null && observacion.length() > 500) {
+            throw new IllegalArgumentException("La observación no puede exceder 500 caracteres");
+        }
+        this.observacion = observacion;
     }
 }

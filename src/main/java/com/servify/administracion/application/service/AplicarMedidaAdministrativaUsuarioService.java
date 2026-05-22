@@ -1,14 +1,14 @@
 package com.servify.administracion.application.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import com.servify.administracion.application.dto.AplicarMedidaAdministrativaUsuarioCommand;
 import com.servify.administracion.application.dto.MedidaAdministrativaUsuarioResult;
 import com.servify.administracion.application.port.in.AplicarMedidaAdministrativaUsuarioUseCase;
 import com.servify.administracion.application.port.out.MedidaAdministrativaUsuarioRepositoryPort;
 import com.servify.administracion.application.port.out.UsuarioAdministrablePort;
 import com.servify.administracion.domain.model.MedidaAdministrativaUsuario;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class AplicarMedidaAdministrativaUsuarioService implements AplicarMedidaAdministrativaUsuarioUseCase {
 
@@ -23,46 +23,88 @@ public class AplicarMedidaAdministrativaUsuarioService implements AplicarMedidaA
 
     @Override
     public MedidaAdministrativaUsuarioResult aplicar(AplicarMedidaAdministrativaUsuarioCommand command) {
-        // TODO implementar aplicacion de medida administrativa.
-        // Debe:
-        // - validar command
-        // - verificar que el administrador exista y tenga permisos mediante UsuarioAdministrablePort
-        // - verificar que el usuario afectado exista
-        // - construir MedidaAdministrativaUsuario
-        // - persistir la medida
-        // - aplicar el efecto sobre el usuario mediante UsuarioAdministrablePort
-        // - devolver MedidaAdministrativaUsuarioResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Aplica una medida administrativa a un usuario:
+        // - valida permisos de administrador y existencia del usuario
+        // - persiste la medida y notifica al adaptador correspondiente
+        validarAdministrador(command.getAdministradorId());
+        validarUsuarioAfectado(command.getUsuarioId());
+        
+        LocalDateTime fechaAplicacion = obtenerFechaActual();
+        MedidaAdministrativaUsuario medida = construirMedida(command, fechaAplicacion);
+        
+        MedidaAdministrativaUsuario medidaPersistida = medidaAdministrativaUsuarioRepositoryPort.guardar(medida);
+        
+        usuarioAdministrablePort.aplicarMedida(command.getUsuarioId(), command.getTipoMedida(), command.getMotivo());
+        
+        return construirResultado(medidaPersistida);
     }
 
     protected void validarAdministrador(UUID administradorId) {
-        // TODO implementar validacion de administrador.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (administradorId == null) {
+            throw new IllegalArgumentException("El ID del administrador no puede ser nulo");
+        }
+        
+        if (!usuarioAdministrablePort.existeUsuario(administradorId)) {
+            throw new IllegalArgumentException("El usuario administrador no existe");
+        }
+        
+        if (!usuarioAdministrablePort.esAdministrador(administradorId)) {
+            throw new IllegalArgumentException("El usuario no tiene permisos de administrador");
+        }
     }
 
     protected void validarUsuarioAfectado(UUID usuarioId) {
-        // TODO implementar validacion de usuario afectado.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (usuarioId == null) {
+            throw new IllegalArgumentException("El ID del usuario afectado no puede ser nulo");
+        }
+        
+        if (!usuarioAdministrablePort.existeUsuario(usuarioId)) {
+            throw new IllegalArgumentException("El usuario afectado no existe");
+        }
     }
 
     protected MedidaAdministrativaUsuario construirMedida(AplicarMedidaAdministrativaUsuarioCommand command,
                                                           LocalDateTime fechaAplicacion) {
-        // TODO implementar construccion de MedidaAdministrativaUsuario.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (command.getTipoMedida() == null) {
+            throw new IllegalArgumentException("El tipo de medida no puede ser nulo");
+        }
+        
+        if (command.getMotivo() == null || command.getMotivo().trim().isEmpty()) {
+            throw new IllegalArgumentException("El motivo no puede ser nulo o vacío");
+        }
+        
+        UUID medidaId = generarIdMedida();
+        
+        return new MedidaAdministrativaUsuario(
+                medidaId,
+                command.getUsuarioId(),
+                command.getAdministradorId(),
+                command.getTipoMedida(),
+                command.getMotivo(),
+                fechaAplicacion,
+                command.getFechaFinVigencia(),
+                true
+        );
     }
 
     protected MedidaAdministrativaUsuarioResult construirResultado(MedidaAdministrativaUsuario medidaAdministrativaUsuario) {
-        // TODO implementar mapeo de MedidaAdministrativaUsuario a result.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return MedidaAdministrativaUsuarioResult.builder()
+                .id(medidaAdministrativaUsuario.getId())
+                .usuarioId(medidaAdministrativaUsuario.getUsuarioId())
+                .administradorId(medidaAdministrativaUsuario.getAdministradorId())
+                .tipoMedida(medidaAdministrativaUsuario.getTipoMedida())
+                .motivo(medidaAdministrativaUsuario.getMotivo())
+                .fechaAplicacion(medidaAdministrativaUsuario.getFechaAplicacion())
+                .fechaFinVigencia(medidaAdministrativaUsuario.getFechaFinVigencia())
+                .activa(medidaAdministrativaUsuario.getActiva())
+                .build();
     }
 
     protected UUID generarIdMedida() {
-        // TODO implementar generacion de identificador de medida.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtencion centralizada de fecha actual.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return LocalDateTime.now();
     }
 }

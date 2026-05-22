@@ -1,9 +1,9 @@
 package com.servify.autenticacion.domain.model;
 
-import com.servify.shared.domain.model.BaseEntity;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.servify.shared.domain.model.BaseEntity;
 
 public class CredencialAcceso extends BaseEntity {
 
@@ -58,72 +58,64 @@ public class CredencialAcceso extends BaseEntity {
     }
 
     public boolean estaHabilitada() {
-        // TODO implementar verificación de credencial habilitada.
-        // Debe devolver true cuando la credencial pueda utilizarse
-        // para autenticarse en la plataforma.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.habilitada != null && this.habilitada;
     }
 
     public boolean perteneceAUsuario(UUID usuarioId) {
-        // TODO implementar validación de pertenencia al usuario.
-        // Debe verificar si esta credencial corresponde al usuario indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (usuarioId == null) {
+            return false;
+        }
+        return this.usuarioId.equals(usuarioId);
     }
 
     public boolean usaEmail(String emailAcceso) {
-        // TODO implementar validación de email de acceso.
-        // Debe verificar si el identificador de acceso coincide
-        // con el email recibido.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (emailAcceso == null || this.emailAcceso == null) {
+            return false;
+        }
+        return this.emailAcceso.equalsIgnoreCase(emailAcceso);
     }
 
     public void actualizarEmailAcceso(String emailAcceso) {
-        // TODO implementar actualización de email de acceso.
-        // Debe validar formato, unicidad en la capa correspondiente
-        // y consistencia con las políticas de autenticación del sistema.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (emailAcceso == null || emailAcceso.trim().isEmpty()) {
+            throw new IllegalArgumentException("El email de acceso no puede ser nulo o vacío");
+        }
+        if (!emailAcceso.contains("@")) {
+            throw new IllegalArgumentException("El email no tiene un formato válido");
+        }
+        this.emailAcceso = emailAcceso;
     }
 
     public void actualizarPasswordHash(String passwordHash) {
-        // TODO implementar actualización del hash de contraseña.
-        // Debe reemplazar el hash almacenado por uno nuevo ya procesado
-        // por la estrategia de hashing definida en infraestructura.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (passwordHash == null || passwordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("El hash de contraseña no puede ser nulo o vacío");
+        }
+        this.passwordHash = passwordHash;
     }
 
     public void registrarAccesoExitoso(LocalDateTime fechaAcceso) {
-        // TODO implementar registro de acceso exitoso.
-        // Debe actualizar la fecha de último acceso
-        // y reiniciar el contador de intentos fallidos si corresponde.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaAcceso == null) {
+            throw new IllegalArgumentException("La fecha de acceso no puede ser nula");
+        }
+        this.ultimoAcceso = fechaAcceso;
+        this.intentosFallidos = 0;
     }
 
     public void registrarIntentoFallido() {
-        // TODO implementar registro de intento fallido.
-        // Debe incrementar el contador de intentos fallidos
-        // y eventualmente disparar reglas de bloqueo o deshabilitación
-        // si la plataforma las define.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (this.intentosFallidos == null) {
+            this.intentosFallidos = 0;
+        }
+        this.intentosFallidos++;
     }
 
     public void reiniciarIntentosFallidos() {
-        // TODO implementar reinicio de intentos fallidos.
-        // Debe dejar el contador en el valor base
-        // cuando corresponda según el flujo de autenticación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.intentosFallidos = 0;
     }
 
     public void habilitar() {
-        // TODO implementar habilitación de la credencial.
-        // Debe permitir nuevamente su uso para autenticación
-        // respetando las reglas de seguridad del sistema.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.habilitada = true;
     }
 
     public void deshabilitar() {
-        // TODO implementar deshabilitación de la credencial.
-        // Debe impedir su uso para autenticación
-        // preservando la trazabilidad de la operación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        this.habilitada = false;
     }
 }

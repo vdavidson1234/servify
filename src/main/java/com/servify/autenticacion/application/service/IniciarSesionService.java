@@ -37,52 +37,100 @@ public class IniciarSesionService implements IniciarSesionUseCase {
 
     @Override
     public SesionResult iniciar(IniciarSesionCommand command) {
-        // TODO implementar inicio de sesion.
-        // Debe:
-        // - validar command
-        // - buscar credencial por email
-        // - validar que la credencial este habilitada
-        // - validar que el usuario pueda autenticarse mediante UsuarioAutenticablePort
-        // - verificar password con PasswordHasherPort
-        // - registrar acceso exitoso o intento fallido segun corresponda
-        // - generar access token y refresh token con TokenProviderPort
-        // - persistir RefreshToken con hash, no el token plano
-        // - devolver SesionResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getEmailAcceso() == null || command.getEmailAcceso().trim().isEmpty()) {
+            throw new IllegalArgumentException("emailAcceso no puede ser nulo o vacío");
+        }
+        if (command.getPasswordPlano() == null || command.getPasswordPlano().trim().isEmpty()) {
+            throw new IllegalArgumentException("password no puede ser nulo o vacío");
+        }
+
+        CredencialAcceso credencial = obtenerCredencial(command.getEmailAcceso());
+        if (!credencial.estaHabilitada()) {
+            throw new IllegalStateException("La credencial no está habilitada");
+        }
+        if (!usuarioAutenticablePort.puedeAutenticarse(credencial.getUsuarioId())) {
+            throw new IllegalStateException("El usuario no puede autenticarse");
+        }
+
+        LocalDateTime ahora = obtenerFechaActual();
+        validarCredencialYPassword(credencial, command.getPasswordPlano());
+        // persistir cambios en credencial (acceso exitoso o intento fallido)
+        this.credencialAccesoRepositoryPort.guardar(credencial);
+
+        TokenResult access = tokenProviderPort.generarAccessToken(credencial.getUsuarioId(), credencial.getEmailAcceso());
+        TokenResult refresh = tokenProviderPort.generarRefreshToken(credencial.getUsuarioId(), credencial.getEmailAcceso());
+
+        RefreshToken refreshDominio = construirRefreshToken(credencial, refresh);
+        this.refreshTokenRepositoryPort.guardar(refreshDominio);
+
+        return construirResultado(credencial, access, refresh, ahora);
     }
 
     protected CredencialAcceso obtenerCredencial(String emailAcceso) {
-        // TODO implementar busqueda obligatoria de credencial por email.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (emailAcceso == null || emailAcceso.trim().isEmpty()) {
+            throw new IllegalArgumentException("emailAcceso no puede ser nulo o vacío");
+        }
+        return this.credencialAccesoRepositoryPort.buscarPorEmailAcceso(emailAcceso)
+                .orElseThrow(() -> new IllegalArgumentException("Credencial no encontrada para email: " + emailAcceso));
     }
 
     protected void validarCredencialYPassword(CredencialAcceso credencialAcceso,
                                               String passwordPlano) {
-        // TODO implementar validacion de credencial y password.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (credencialAcceso == null) {
+            throw new IllegalArgumentException("Credencial no puede ser nula");
+        }
+        if (passwordPlano == null) {
+            throw new IllegalArgumentException("password no puede ser nulo");
+        }
+        LocalDateTime ahora = obtenerFechaActual();
+        boolean coincide = this.passwordHasherPort.coincide(passwordPlano, credencialAcceso.getPasswordHash());
+        if (coincide) {
+            credencialAcceso.registrarAccesoExitoso(ahora);
+        } else {
+            credencialAcceso.registrarIntentoFallido();
+            throw new IllegalArgumentException("Credenciales inválidas");
+        }
     }
 
     protected RefreshToken construirRefreshToken(CredencialAcceso credencialAcceso,
                                                  TokenResult refreshToken) {
-        // TODO implementar construccion del RefreshToken de dominio.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (credencialAcceso == null || refreshToken == null) {
+            throw new IllegalArgumentException("credencialAcceso y refreshToken no pueden ser nulos");
+        }
+        String hash = this.tokenProviderPort.obtenerHashToken(refreshToken.getToken());
+        return new RefreshToken(
+                generarIdRefreshToken(),
+                credencialAcceso.getUsuarioId(),
+                credencialAcceso.getId(),
+                hash,
+                refreshToken.getFechaEmision(),
+                refreshToken.getFechaExpiracion(),
+                null,
+                true
+        );
     }
 
     protected SesionResult construirResultado(CredencialAcceso credencialAcceso,
                                               TokenResult accessToken,
                                               TokenResult refreshToken,
                                               LocalDateTime fechaInicioSesion) {
-        // TODO implementar mapeo de sesion usando SesionResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return SesionResult.builder()
+            .usuarioId(credencialAcceso.getUsuarioId())
+            .emailAcceso(credencialAcceso.getEmailAcceso())
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .fechaInicioSesion(fechaInicioSesion)
+            .build();
     }
 
     protected UUID generarIdRefreshToken() {
-        // TODO implementar generacion de identificador de refresh token.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtencion centralizada de fecha actual.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return LocalDateTime.now();
     }
 }

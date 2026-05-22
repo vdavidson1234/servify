@@ -9,6 +9,7 @@ import com.servify.solicitudes.domain.enumtype.EstadoContraoferta;
 import com.servify.solicitudes.domain.model.Contraoferta;
 import com.servify.solicitudes.domain.model.DistribucionSolicitud;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -28,112 +29,152 @@ public class EmitirContraofertaService implements EmitirContraofertaUseCase {
 
     @Override
     public void emitir(EmitirContraofertaCommand command) {
-        // TODO implementar emisión de contraoferta.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - validar que distribucionSolicitudId, prestadorId y precioPropuesto no sean nulos
-        // - buscar la distribución mediante DistribucionSolicitudRepositoryPort
-        // - verificar que la distribución exista
-        // - verificar que pertenezca al prestador indicado
-        // - verificar que la distribución pueda recibir una contraoferta
-        // - verificar que la solicitud asociada siga activa y pendiente de asignación
-        // - verificar que no exista ya una contraoferta pendiente incompatible para esa distribución
-        // - construir la entidad Contraoferta con estado inicial válido
-        // - marcar la distribución como contraofertada registrando la fecha de respuesta
-        // - persistir la contraoferta
-        // - persistir la distribución actualizada
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Emite una contraoferta para una distribución de solicitud.
+        // - Valida el comando y la pertenencia del prestador.
+        // - Verifica que la distribución y la solicitud asociada estén en estado aceptable.
+        // - Crea la entidad `Contraoferta`, marca la distribución y persiste ambos cambios.
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getDistribucionSolicitudId() == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        if (command.getPrestadorId() == null) {
+            throw new IllegalArgumentException("prestadorId no puede ser nulo");
+        }
+        if (command.getPrecioPropuesto() == null) {
+            throw new IllegalArgumentException("precioPropuesto no puede ser nulo");
+        }
+
+        DistribucionSolicitud distribucion = obtenerDistribucionExistente(command.getDistribucionSolicitudId());
+        validarPertenenciaPrestador(distribucion, command.getPrestadorId());
+        validarContraofertaPermitida(distribucion);
+        validarSolicitudAsociadaActiva(distribucion);
+        validarAusenciaDeContraofertaPendiente(distribucion.getId());
+
+        LocalDateTime ahora = obtenerFechaActual();
+        Contraoferta contraoferta = construirContraoferta(command, distribucion, ahora);
+
+        marcarDistribucionComoContraofertada(distribucion, ahora);
+
+        persistirContraoferta(contraoferta);
+        persistirDistribucion(distribucion);
     }
 
     protected DistribucionSolicitud obtenerDistribucionExistente(UUID distribucionSolicitudId) {
-        // TODO implementar búsqueda obligatoria de distribución por id.
-        // Debe recuperar la distribución desde DistribucionSolicitudRepositoryPort
-        // y lanzar la excepción correspondiente si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitudId == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarPorId(distribucionSolicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribución no encontrada: " + distribucionSolicitudId));
     }
 
     protected void validarPertenenciaPrestador(DistribucionSolicitud distribucionSolicitud, UUID prestadorId) {
-        // TODO implementar validación de pertenencia al prestador.
-        // Debe verificar que la distribución corresponda al prestador que intenta emitir la contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null || prestadorId == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para validar pertenencia de prestador");
+        }
+        if (!distribucionSolicitud.perteneceAPrestador(prestadorId)) {
+            throw new IllegalArgumentException("La distribución no pertenece al prestador indicado");
+        }
     }
 
     protected void validarContraofertaPermitida(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar validación previa a la contraoferta.
-        // Debe verificar que la distribución:
-        // - no esté cerrada
-        // - no esté expirada
-        // - no haya sido respondida definitivamente
-        // - y siga en un estado apto para recibir contraoferta
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("distribucionSolicitud no puede ser nula");
+        }
+        if (distribucionSolicitud.estaCerrada()) {
+            throw new IllegalStateException("La distribución está cerrada");
+        }
+        if (distribucionSolicitud.estaExpirada()) {
+            throw new IllegalStateException("La distribución está expirada");
+        }
+        if (distribucionSolicitud.fueRespondida()) {
+            throw new IllegalStateException("La distribución ya fue respondida definitivamente");
+        }
+        if (!distribucionSolicitud.puedeSerRespondida()) {
+            throw new IllegalStateException("La distribución no está en un estado apto para recibir contraoferta");
+        }
     }
 
     protected void validarSolicitudAsociadaActiva(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar validación de solicitud asociada.
-        // Debe verificar, utilizando SolicitudServicioRepositoryPort, que la solicitud
-        // vinculada a la distribución siga activa y pendiente de asignación.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("distribucionSolicitud no puede ser nula");
+        }
+        this.solicitudServicioRepositoryPort.buscarPorId(distribucionSolicitud.getSolicitudId())
+                .ifPresentOrElse(solicitud -> {
+                    if (!solicitud.puedeRecibirRespuestas()) {
+                        throw new IllegalStateException("La solicitud asociada no está activa o ya no acepta respuestas");
+                    }
+                }, () -> {
+                    throw new IllegalArgumentException("Solicitud asociada no encontrada: " + distribucionSolicitud.getSolicitudId());
+                });
     }
 
     protected void validarAusenciaDeContraofertaPendiente(UUID distribucionSolicitudId) {
-        // TODO implementar validación de unicidad de contraoferta pendiente.
-        // Debe verificar, utilizando ContraofertaRepositoryPort, que no exista ya
-        // una contraoferta pendiente incompatible para la distribución indicada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitudId == null) {
+            throw new IllegalArgumentException("distribucionSolicitudId no puede ser nulo");
+        }
+        this.contraofertaRepositoryPort.buscarPendientePorDistribucionSolicitudId(distribucionSolicitudId)
+                .ifPresent(c -> {
+                    throw new IllegalStateException("Ya existe una contraoferta pendiente para esta distribución: " + c.getId());
+                });
     }
 
     protected Contraoferta construirContraoferta(EmitirContraofertaCommand command,
                                                  DistribucionSolicitud distribucionSolicitud,
                                                  LocalDateTime fechaEmision) {
-        // TODO implementar construcción de la contraoferta.
-        // Debe crear la entidad Contraoferta con:
-        // - id nuevo
-        // - distribucionSolicitudId
-        // - prestadorId
-        // - precio original tomado del contexto de la distribución/solicitud
-        // - precio propuesto recibido en el command
-        // - mensaje recibido
-        // - estado inicial adecuado
-        // - fecha de emisión actual
-        // - fecha de resolución nula
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (command == null || distribucionSolicitud == null || fechaEmision == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para construir contraoferta");
+        }
+        BigDecimal precioOriginal = this.solicitudServicioRepositoryPort
+            .buscarPorId(distribucionSolicitud.getSolicitudId())
+            .map(s -> s.getPrecioReferencia())
+            .orElse(BigDecimal.ZERO);
+
+        return new Contraoferta(
+            generarIdContraoferta(),
+            distribucionSolicitud.getId(),
+            command.getPrestadorId(),
+            precioOriginal,
+            command.getPrecioPropuesto(),
+            command.getMensaje(),
+            obtenerEstadoInicialContraoferta(),
+            fechaEmision,
+            null
+        );
     }
 
     protected void marcarDistribucionComoContraofertada(DistribucionSolicitud distribucionSolicitud,
                                                         LocalDateTime fechaRespuesta) {
-        // TODO implementar cambio de estado de la distribución.
-        // Debe marcar la distribución como contraofertada registrando la fecha de respuesta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null || fechaRespuesta == null) {
+            throw new IllegalArgumentException("Argumentos inválidos para marcar distribución como contraofertada");
+        }
+        distribucionSolicitud.marcarComoContraofertada(fechaRespuesta);
     }
 
     protected void persistirContraoferta(Contraoferta contraoferta) {
-        // TODO implementar persistencia de la contraoferta.
-        // Debe delegar el guardado en ContraofertaRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (contraoferta == null) {
+            throw new IllegalArgumentException("contraoferta no puede ser nula");
+        }
+        this.contraofertaRepositoryPort.guardar(contraoferta);
     }
 
     protected void persistirDistribucion(DistribucionSolicitud distribucionSolicitud) {
-        // TODO implementar persistencia de la distribución actualizada.
-        // Debe delegar el guardado en DistribucionSolicitudRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionSolicitud == null) {
+            throw new IllegalArgumentException("distribucionSolicitud no puede ser nula");
+        }
+        this.distribucionSolicitudRepositoryPort.guardar(distribucionSolicitud);
     }
 
     protected EstadoContraoferta obtenerEstadoInicialContraoferta() {
-        // TODO implementar definición del estado inicial de la contraoferta.
-        // Debe devolver el estado con el que una contraoferta recién emitida
-        // debe iniciar su ciclo de vida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return EstadoContraoferta.PENDIENTE;
     }
 
     protected UUID generarIdContraoferta() {
-        // TODO implementar generación de identificador de contraoferta.
-        // Por el momento puede resolverse con UUID aleatorio si esa es la estrategia elegida.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return UUID.randomUUID();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtención de fecha actual.
-        // Debe centralizar la fecha/hora usada al emitir la contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return LocalDateTime.now();
     }
 }

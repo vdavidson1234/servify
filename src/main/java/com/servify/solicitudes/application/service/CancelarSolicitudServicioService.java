@@ -17,42 +17,59 @@ public class CancelarSolicitudServicioService implements CancelarSolicitudServic
 
     @Override
     public void cancelar(CancelarSolicitudServicioCommand command) {
-        // TODO implementar cancelación de solicitud.
-        // Debe:
-        // - validar que el command no sea nulo
-        // - validar que solicitudId y solicitanteId no sean nulos
-        // - buscar la solicitud mediante SolicitudServicioRepositoryPort
-        // - verificar que la solicitud exista
-        // - verificar que la solicitud pertenezca al solicitante indicado
-        // - verificar que la solicitud pueda cancelarse según las reglas del negocio
-        // - ejecutar la cancelación sobre la entidad
-        // - persistir la solicitud actualizada
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Cancela una solicitud por su solicitante si el estado lo permite.
+        // - valida pertenencia y reglas de cancelación
+        if (command == null) {
+            throw new IllegalArgumentException("El comando no puede ser nulo");
+        }
+        if (command.getSolicitudId() == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        if (command.getSolicitanteId() == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+
+        SolicitudServicio solicitud = obtenerSolicitudExistente(command.getSolicitudId());
+        validarPertenenciaSolicitante(solicitud, command.getSolicitanteId());
+        validarCancelacionPermitida(solicitud);
+
+        solicitud.cancelar();
+        persistirSolicitud(solicitud);
     }
 
     protected SolicitudServicio obtenerSolicitudExistente(UUID solicitudId) {
-        // TODO implementar búsqueda obligatoria de solicitud por id.
-        // Debe recuperar la solicitud desde SolicitudServicioRepositoryPort
-        // y lanzar la excepción correspondiente si no existe.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada: " + solicitudId));
     }
 
     protected void validarPertenenciaSolicitante(SolicitudServicio solicitudServicio, UUID solicitanteId) {
-        // TODO implementar validación de pertenencia al solicitante.
-        // Debe verificar que la solicitud pertenezca al usuario que intenta cancelarla.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("Solicitud no puede ser nula");
+        }
+        if (solicitanteId == null) {
+            throw new IllegalArgumentException("solicitanteId no puede ser nulo");
+        }
+        if (!solicitudServicio.getSolicitanteId().equals(solicitanteId)) {
+            throw new IllegalArgumentException("El solicitante no es propietario de la solicitud");
+        }
     }
 
     protected void validarCancelacionPermitida(SolicitudServicio solicitudServicio) {
-        // TODO implementar validación previa a la cancelación.
-        // Debe verificar que la solicitud no esté finalizada
-        // y que cumpla las demás reglas del negocio para poder cancelarse.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("Solicitud no puede ser nula");
+        }
+        if (!solicitudServicio.puedeSerCancelada()) {
+            throw new IllegalStateException("La solicitud no puede cancelarse en su estado actual");
+        }
     }
 
     protected void persistirSolicitud(SolicitudServicio solicitudServicio) {
-        // TODO implementar persistencia de la solicitud actualizada.
-        // Debe delegar el guardado en SolicitudServicioRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            throw new IllegalArgumentException("Solicitud no puede ser nula");
+        }
+        this.solicitudServicioRepositoryPort.guardar(solicitudServicio);
     }
 }

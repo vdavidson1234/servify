@@ -9,28 +9,38 @@ public class PoliticaExpiracionDistribucion {
 
     public boolean debeExpirar(DistribucionSolicitud distribucion,
                                LocalDateTime fechaActual) {
-        // TODO implementar validación de expiración de una distribución.
-        // Debe verificar, como mínimo:
-        // - que la distribución exista
-        // - que la distribución continúe en un estado que admita expiración
-        // - que tenga fecha de expiración definida
-        // - que la fecha actual haya superado o alcanzado la fecha de expiración
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucion == null || fechaActual == null) {
+            return false;
+        }
+        
+        if (!distribucion.estaEnviada()) {
+            return false;
+        }
+        
+        LocalDateTime fechaExpiracion = distribucion.getFechaExpiracion();
+        if (fechaExpiracion == null) {
+            return false;
+        }
+        
+        return fechaActual.isAfter(fechaExpiracion) || fechaActual.equals(fechaExpiracion);
     }
 
     public boolean existenDistribucionesExpirables(List<DistribucionSolicitud> distribuciones,
                                                    LocalDateTime fechaActual) {
-        // TODO implementar detección de distribuciones expirables.
-        // Debe recorrer la lista de distribuciones y detectar si alguna
-        // ya cumple las condiciones para ser marcada como expirada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribuciones == null || distribuciones.isEmpty() || fechaActual == null) {
+            return false;
+        }
+        
+        return distribuciones.stream()
+                .anyMatch(d -> d != null && debeExpirar(d, fechaActual));
     }
 
     public boolean puedeSeguirEsperandoRespuesta(DistribucionSolicitud distribucion,
                                                  LocalDateTime fechaActual) {
-        // TODO implementar validación de espera activa.
-        // Debe devolver true cuando la distribución todavía no haya expirado
-        // y continúe disponible para ser respondida por el prestador.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucion == null || fechaActual == null) {
+            return false;
+        }
+        
+        return distribucion.estaEnviada() && !debeExpirar(distribucion, fechaActual);
     }
 }

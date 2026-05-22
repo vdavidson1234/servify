@@ -40,73 +40,112 @@ public class ListarSolicitudesRecibidasService implements ListarSolicitudesRecib
 
     @Override
     public List<SolicitudServicioResult> listarPorPrestadorId(UUID prestadorId) {
-        // TODO implementar listado de solicitudes recibidas por el prestador.
-        // Debe:
-        // - validar que el prestadorId no sea nulo
-        // - consultar las distribuciones del prestador mediante DistribucionSolicitudRepositoryPort
-        // - obtener las solicitudes asociadas a cada distribución
-        // - mapear cada solicitud a SolicitudServicioResult
-        // - evitar duplicados si por alguna razón existieran múltiples distribuciones
-        // - devolver lista vacía si no existen solicitudes recibidas
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        // Lista las solicitudes cuyos envíos (distribuciones) recibió un prestador.
+        // - Recupera distribuciones activas para el prestador y mapea las solicitudes asociadas.
+        if (prestadorId == null) {
+            throw new IllegalArgumentException("prestadorId no puede ser nulo");
+        }
+        List<DistribucionSolicitud> distribuciones = obtenerDistribucionesDelPrestador(prestadorId);
+        if (distribuciones == null || distribuciones.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<SolicitudServicio> solicitudes = obtenerSolicitudesAsociadas(distribuciones);
+        return construirResultados(solicitudes);
     }
 
     protected List<DistribucionSolicitud> obtenerDistribucionesDelPrestador(UUID prestadorId) {
-        // TODO implementar obtención de distribuciones del prestador.
-        // Debe delegar la consulta en DistribucionSolicitudRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null) {
+            throw new IllegalArgumentException("prestadorId no puede ser nulo");
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarPorPrestadorId(prestadorId);
     }
 
     protected List<SolicitudServicio> obtenerSolicitudesAsociadas(List<DistribucionSolicitud> distribuciones) {
-        // TODO implementar obtención de solicitudes asociadas a distribuciones.
-        // Debe recorrer las distribuciones y recuperar cada solicitud desde
-        // SolicitudServicioRepositoryPort, evitando nulos y duplicados.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        List<SolicitudServicio> resultados = new ArrayList<>();
+        if (distribuciones == null || distribuciones.isEmpty()) {
+            return resultados;
+        }
+        for (DistribucionSolicitud d : distribuciones) {
+            if (d == null) continue;
+            Optional<SolicitudServicio> opt = obtenerSolicitudPorId(d.getSolicitudId());
+            if (opt.isPresent()) {
+                SolicitudServicio s = opt.get();
+                if (!yaFueAgregada(s.getId(), resultados)) {
+                    resultados.add(s);
+                }
+            }
+        }
+        return resultados;
     }
 
     protected Optional<SolicitudServicio> obtenerSolicitudPorId(UUID solicitudId) {
-        // TODO implementar obtención opcional de solicitud por id.
-        // Debe delegar la búsqueda en SolicitudServicioRepositoryPort.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null) {
+            return Optional.empty();
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId);
     }
 
     protected List<SolicitudServicioResult> construirResultados(List<SolicitudServicio> solicitudes) {
-        // TODO implementar mapeo de lista de solicitudes a resultados.
-        // Debe transformar cada SolicitudServicio en SolicitudServicioResult.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudes == null || solicitudes.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<SolicitudServicioResult> resultados = new ArrayList<>();
+        for (SolicitudServicio s : solicitudes) {
+            resultados.add(construirResultado(s));
+        }
+        return resultados;
     }
 
     protected SolicitudServicioResult construirResultado(SolicitudServicio solicitudServicio) {
-        // TODO implementar mapeo de SolicitudServicio a SolicitudServicioResult.
-        // Debe incluir:
-        // - id de la solicitud
-        // - solicitanteId
-        // - categoriaServicioId
-        // - modalidad
-        // - ubicación mapeada a UbicacionSolicitudResult
-        // - disponibilidad requerida mapeada a DisponibilidadHorariaResult
-        // - descripción de necesidad
-        // - precio de referencia
-        // - estado
-        // - fecha de solicitud
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudServicio == null) {
+            return null;
+        }
+        return new SolicitudServicioResult(
+                solicitudServicio.getId(),
+                solicitudServicio.getSolicitanteId(),
+                solicitudServicio.getCategoriaServicioId(),
+                solicitudServicio.getModalidadServicio(),
+                construirUbicacionResult(solicitudServicio.getUbicacion()),
+                construirDisponibilidadResult(solicitudServicio.getDisponibilidadRequerida()),
+                solicitudServicio.getDescripcionNecesidad(),
+                solicitudServicio.getPrecioReferencia(),
+                solicitudServicio.getEstado(),
+                solicitudServicio.getFechaSolicitud()
+        );
     }
 
     protected UbicacionSolicitudResult construirUbicacionResult(Ubicacion ubicacion) {
-        // TODO implementar mapeo de Ubicacion a UbicacionSolicitudResult.
-        // Debe contemplar el caso de ubicación nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (ubicacion == null) {
+            return null;
+        }
+        return new UbicacionSolicitudResult(
+                ubicacion.getPais(),
+                ubicacion.getProvincia(),
+                ubicacion.getCiudad(),
+                ubicacion.getLocalidad(),
+                ubicacion.getCalle(),
+                ubicacion.getAltura(),
+                ubicacion.getReferencia(),
+                ubicacion.getLatitud(),
+                ubicacion.getLongitud()
+        );
     }
 
     protected DisponibilidadHorariaResult construirDisponibilidadResult(DisponibilidadHoraria disponibilidadHoraria) {
-        // TODO implementar mapeo de DisponibilidadHoraria a DisponibilidadHorariaResult.
-        // Debe contemplar el caso de disponibilidad nula si el flujo lo permitiera.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (disponibilidadHoraria == null) {
+            return null;
+        }
+        return new DisponibilidadHorariaResult(
+                disponibilidadHoraria.getDiaSemana(),
+                disponibilidadHoraria.getHoraDesde(),
+                disponibilidadHoraria.getHoraHasta()
+        );
     }
 
     protected boolean yaFueAgregada(UUID solicitudId, List<SolicitudServicio> solicitudes) {
-        // TODO implementar validación de duplicados.
-        // Debe verificar si la solicitud ya fue agregada a la colección resultado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitudId == null || solicitudes == null) {
+            return false;
+        }
+        return solicitudes.stream().anyMatch(s -> solicitudId.equals(s.getId()));
     }
 }

@@ -36,52 +36,110 @@ public class ObtenerEstadoAsignacionSolicitudService implements ObtenerEstadoAsi
 
     @Override
     public EstadoAsignacionSolicitudResult obtenerEstado(UUID solicitudId) {
-        // TODO implementar consulta de estado de asignacion.
-        // Debe:
-        // - validar solicitudId
-        // - recuperar solicitud existente
-        // - consultar asignacion por solicitud si existe
-        // - consultar distribuciones activas de la solicitud
-        // - consultar contraofertas pendientes asociadas a sus distribuciones
-        // - devolver EstadoAsignacionSolicitudResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Obtiene el estado de asignación de una solicitud:
+        // - solicitud principal
+        // - asignación si existe
+        // - distribuciones activas y contraofertas pendientes
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        SolicitudServicio solicitud = obtenerSolicitudExistente(solicitudId);
+        Optional<AsignacionServicio> asignacion = obtenerAsignacion(solicitudId);
+        List<DistribucionSolicitud> distribucionesActivas = obtenerDistribucionesActivas(solicitudId);
+        List<Contraoferta> contraofertasPendientes = obtenerContraofertasPendientes(distribucionesActivas);
+
+        return construirResultado(solicitud, asignacion, contraofertasPendientes, distribucionesActivas == null ? 0 : distribucionesActivas.size());
     }
 
     protected SolicitudServicio obtenerSolicitudExistente(UUID solicitudId) {
-        // TODO implementar busqueda obligatoria de solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            throw new IllegalArgumentException("solicitudId no puede ser nulo");
+        }
+        return this.solicitudServicioRepositoryPort.buscarPorId(solicitudId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada: " + solicitudId));
     }
 
     protected Optional<AsignacionServicio> obtenerAsignacion(UUID solicitudId) {
-        // TODO implementar busqueda opcional de asignacion por solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            return Optional.empty();
+        }
+        return this.asignacionServicioRepositoryPort.buscarPorSolicitudId(solicitudId);
     }
 
     protected List<DistribucionSolicitud> obtenerDistribucionesActivas(UUID solicitudId) {
-        // TODO implementar consulta de distribuciones activas por solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (solicitudId == null) {
+            return java.util.Collections.emptyList();
+        }
+        return this.distribucionSolicitudRepositoryPort.buscarActivasPorSolicitudId(solicitudId);
     }
 
     protected List<Contraoferta> obtenerContraofertasPendientes(List<DistribucionSolicitud> distribuciones) {
-        // TODO implementar consulta de contraofertas pendientes asociadas a distribuciones.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        java.util.List<Contraoferta> resultados = new java.util.ArrayList<>();
+        if (distribuciones == null || distribuciones.isEmpty()) {
+            return resultados;
+        }
+        for (DistribucionSolicitud d : distribuciones) {
+            if (d == null) continue;
+            this.contraofertaRepositoryPort.buscarPendientePorDistribucionSolicitudId(d.getId())
+                    .ifPresent(resultados::add);
+        }
+        return resultados;
     }
 
     protected AsignacionServicioResult construirAsignacionResult(AsignacionServicio asignacionServicio) {
-        // TODO implementar mapeo de AsignacionServicio a AsignacionServicioResult.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (asignacionServicio == null) {
+            return null;
+        }
+        return AsignacionServicioResult.builder()
+            .id(asignacionServicio.getId())
+            .solicitudId(asignacionServicio.getSolicitudId())
+            .distribucionSolicitudId(asignacionServicio.getDistribucionSolicitudId())
+            .prestadorId(asignacionServicio.getPrestadorId())
+            .publicacionServicioId(asignacionServicio.getPublicacionServicioId())
+            .precioAcordado(asignacionServicio.getPrecioAcordado())
+            .estado(asignacionServicio.getEstado())
+            .fechaAsignacion(asignacionServicio.getFechaAsignacion())
+            .fechaFinalizacion(asignacionServicio.getFechaFinalizacion())
+            .build();
     }
 
     protected ContraofertaResult construirContraofertaResult(Contraoferta contraoferta) {
-        // TODO implementar mapeo de Contraoferta a ContraofertaResult.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (contraoferta == null) {
+            return null;
+        }
+        return ContraofertaResult.builder()
+                .id(contraoferta.getId())
+                .distribucionSolicitudId(contraoferta.getDistribucionSolicitudId())
+                .prestadorId(contraoferta.getPrestadorId())
+                .precioOriginal(contraoferta.getPrecioOriginal())
+                .precioPropuesto(contraoferta.getPrecioPropuesto())
+                .mensaje(contraoferta.getMensaje())
+                .estado(contraoferta.getEstado())
+                .fechaEmision(contraoferta.getFechaEmision())
+                .fechaResolucion(contraoferta.getFechaResolucion())
+                .build();
     }
 
     protected EstadoAsignacionSolicitudResult construirResultado(SolicitudServicio solicitudServicio,
                                                                  Optional<AsignacionServicio> asignacionServicio,
                                                                  List<Contraoferta> contraofertasPendientes,
                                                                  Integer distribucionesActivas) {
-        // TODO implementar mapeo final de estado de asignacion.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        EstadoAsignacionSolicitudResult.Builder builder = EstadoAsignacionSolicitudResult.builder()
+                .solicitudId(solicitudServicio.getId())
+                .solicitanteId(solicitudServicio.getSolicitanteId())
+                .estadoSolicitud(solicitudServicio.getEstado())
+                .distribucionesActivas(distribucionesActivas == null ? 0 : distribucionesActivas);
+
+        asignacionServicio.ifPresent(a -> builder.asignacion(construirAsignacionResult(a)));
+
+        if (contraofertasPendientes != null && !contraofertasPendientes.isEmpty()) {
+            java.util.List<ContraofertaResult> resultados = new java.util.ArrayList<>();
+            for (Contraoferta c : contraofertasPendientes) {
+                resultados.add(construirContraofertaResult(c));
+            }
+            builder.contraofertasPendientes(resultados);
+        }
+
+        return builder.build();
     }
 }

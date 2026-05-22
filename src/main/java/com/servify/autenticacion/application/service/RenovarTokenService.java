@@ -32,52 +32,102 @@ public class RenovarTokenService implements RenovarTokenUseCase {
 
     @Override
     public SesionResult renovar(RenovarTokenCommand command) {
-        // TODO implementar renovacion de token.
-        // Debe:
-        // - validar command
-        // - buscar RefreshToken por hash
-        // - validar que este activo, no expirado y no revocado
-        // - validar que el usuario pueda autenticarse
-        // - recuperar CredencialAcceso asociada
-        // - generar nuevo access token y refresh token
-        // - revocar el refresh token anterior si la politica de rotacion lo exige
-        // - persistir el nuevo RefreshToken
-        // - devolver SesionResult usando builder
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        // Renueva tokens a partir de un refresh token válido.
+        // - valida el refresh token, revoca el anterior y genera nuevos tokens
+        if (command == null || command.getRefreshToken() == null || command.getRefreshToken().trim().isEmpty()) {
+            throw new IllegalArgumentException("refreshToken no puede ser nulo o vacío");
+        }
+
+        LocalDateTime ahora = obtenerFechaActual();
+        RefreshToken existente = obtenerRefreshToken(command.getRefreshToken());
+        validarRefreshToken(existente, ahora);
+
+        CredencialAcceso credencial = obtenerCredencial(existente);
+        if (!usuarioAutenticablePort.puedeAutenticarse(credencial.getUsuarioId())) {
+            throw new IllegalStateException("El usuario no puede autenticarse");
+        }
+
+        TokenResult nuevoAccess = tokenProviderPort.generarAccessToken(credencial.getUsuarioId(), credencial.getEmailAcceso());
+        TokenResult nuevoRefresh = tokenProviderPort.generarRefreshToken(credencial.getUsuarioId(), credencial.getEmailAcceso());
+
+        // Revocar refresh token anterior y persistir cambio
+        existente.revocar(ahora);
+        refreshTokenRepositoryPort.guardar(existente);
+
+        RefreshToken refreshDominio = construirRefreshToken(credencial, nuevoRefresh);
+        refreshTokenRepositoryPort.guardar(refreshDominio);
+
+        return construirResultado(credencial, nuevoAccess, nuevoRefresh, ahora);
     }
 
     protected RefreshToken obtenerRefreshToken(String refreshTokenPlano) {
-        // TODO implementar busqueda obligatoria de RefreshToken por hash.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (refreshTokenPlano == null || refreshTokenPlano.trim().isEmpty()) {
+            throw new IllegalArgumentException("refreshToken no puede ser nulo o vacío");
+        }
+        String hash = this.tokenProviderPort.obtenerHashToken(refreshTokenPlano);
+        return this.refreshTokenRepositoryPort.buscarPorTokenHash(hash)
+                .orElseThrow(() -> new IllegalArgumentException("Refresh token no encontrado"));
     }
 
     protected CredencialAcceso obtenerCredencial(RefreshToken refreshToken) {
-        // TODO implementar busqueda obligatoria de CredencialAcceso asociada.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (refreshToken == null) {
+            throw new IllegalArgumentException("refreshToken no puede ser nulo");
+        }
+        if (refreshToken.getCredencialAccesoId() == null) {
+            throw new IllegalStateException("Refresh token sin credencial asociada");
+        }
+        return this.credencialAccesoRepositoryPort.buscarPorId(refreshToken.getCredencialAccesoId())
+                .orElseThrow(() -> new IllegalStateException("Credencial de acceso asociada no encontrada"));
     }
 
     protected void validarRefreshToken(RefreshToken refreshToken,
                                        LocalDateTime fechaActual) {
-        // TODO implementar validacion de refresh token vigente.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (refreshToken == null) {
+            throw new IllegalArgumentException("refreshToken no puede ser nulo");
+        }
+        if (!refreshToken.estaActivo()) {
+            throw new IllegalStateException("Refresh token no está activo");
+        }
+        if (refreshToken.estaExpirado(fechaActual)) {
+            throw new IllegalStateException("Refresh token expirado");
+        }
+        if (refreshToken.fueRevocado()) {
+            throw new IllegalStateException("Refresh token revocado");
+        }
     }
 
     protected RefreshToken construirRefreshToken(CredencialAcceso credencialAcceso,
                                                  TokenResult refreshToken) {
-        // TODO implementar construccion del nuevo RefreshToken de dominio.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        if (credencialAcceso == null || refreshToken == null) {
+            throw new IllegalArgumentException("credencialAcceso y refreshToken no pueden ser nulos");
+        }
+        String hash = this.tokenProviderPort.obtenerHashToken(refreshToken.getToken());
+        return new RefreshToken(
+                java.util.UUID.randomUUID(),
+                credencialAcceso.getUsuarioId(),
+                credencialAcceso.getId(),
+                hash,
+                refreshToken.getFechaEmision(),
+                refreshToken.getFechaExpiracion(),
+                null,
+                true
+        );
     }
 
     protected SesionResult construirResultado(CredencialAcceso credencialAcceso,
                                               TokenResult accessToken,
                                               TokenResult refreshToken,
                                               LocalDateTime fechaInicioSesion) {
-        // TODO implementar mapeo de sesion usando SesionResult.builder().
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return SesionResult.builder()
+            .usuarioId(credencialAcceso.getUsuarioId())
+            .emailAcceso(credencialAcceso.getEmailAcceso())
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .fechaInicioSesion(fechaInicioSesion)
+            .build();
     }
 
     protected LocalDateTime obtenerFechaActual() {
-        // TODO implementar obtencion centralizada de fecha actual.
-        throw new UnsupportedOperationException("Pendiente de implementacion");
+        return LocalDateTime.now();
     }
 }

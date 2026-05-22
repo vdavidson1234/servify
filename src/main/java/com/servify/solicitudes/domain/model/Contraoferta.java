@@ -81,77 +81,85 @@ public class Contraoferta extends BaseEntity {
     }
 
     public boolean estaPendiente() {
-        // TODO implementar verificación de estado PENDIENTE.
-        // Debe devolver true cuando la contraoferta haya sido emitida
-        // y todavía no haya sido aceptada, rechazada o cancelada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoContraoferta.PENDIENTE;
     }
 
     public boolean estaAceptada() {
-        // TODO implementar verificación de estado ACEPTADA.
-        // Debe devolver true cuando la contraoferta haya sido aceptada
-        // por la parte correspondiente del flujo.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoContraoferta.ACEPTADA;
     }
 
     public boolean estaRechazada() {
-        // TODO implementar verificación de estado RECHAZADA.
-        // Debe devolver true cuando la contraoferta haya sido rechazada.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoContraoferta.RECHAZADA;
     }
 
     public boolean estaCancelada() {
-        // TODO implementar verificación de estado CANCELADA.
-        // Debe devolver true cuando la contraoferta haya perdido vigencia
-        // o haya sido anulada por el sistema o por el flujo del negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return this.estado == EstadoContraoferta.CANCELADA;
     }
 
     public boolean puedeSerResuelta() {
-        // TODO implementar validación para resolución de la contraoferta.
-        // Debe verificar que la contraoferta continúe pendiente
-        // y que la distribución/solicitud asociada siga activa.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        return estaPendiente();
     }
 
     public boolean perteneceAPrestador(UUID prestadorId) {
-        // TODO implementar validación de pertenencia.
-        // Debe verificar si la contraoferta fue emitida por el prestador indicado.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null) {
+            return false;
+        }
+        return this.prestadorId != null && this.prestadorId.equals(prestadorId);
     }
 
     public void actualizarMensaje(String mensaje) {
-        // TODO implementar actualización del mensaje de la contraoferta.
-        // Debe validar longitud, contenido y si el cambio está permitido
-        // según el estado actual de la contraoferta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!estaPendiente()) {
+            throw new IllegalStateException("No se puede modificar el mensaje de una contraoferta no pendiente");
+        }
+        if (mensaje == null || mensaje.trim().isEmpty()) {
+            throw new IllegalArgumentException("El mensaje no puede ser nulo o vacío");
+        }
+        if (mensaje.length() > 500) {
+            throw new IllegalArgumentException("El mensaje no puede exceder 500 caracteres");
+        }
+        this.mensaje = mensaje;
     }
 
     public void actualizarPrecioPropuesto(BigDecimal precioPropuesto) {
-        // TODO implementar actualización del precio propuesto.
-        // Debe validar que el precio no sea nulo, no sea negativo
-        // y cumpla las restricciones definidas por el negocio.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!estaPendiente()) {
+            throw new IllegalStateException("No se puede modificar el precio de una contraoferta no pendiente");
+        }
+        if (precioPropuesto == null) {
+            throw new IllegalArgumentException("El precio propuesto no puede ser nulo");
+        }
+        if (precioPropuesto.signum() < 0) {
+            throw new IllegalArgumentException("El precio propuesto no puede ser negativo");
+        }
+        this.precioPropuesto = precioPropuesto;
     }
 
     public void aceptar(LocalDateTime fechaResolucion) {
-        // TODO implementar aceptación de la contraoferta.
-        // Debe cambiar el estado a ACEPTADA, registrar la fecha de resolución
-        // y validar que la contraoferta pueda ser resuelta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!puedeSerResuelta()) {
+            throw new IllegalStateException("La contraoferta no puede ser resuelta");
+        }
+        if (fechaResolucion == null) {
+            throw new IllegalArgumentException("La fecha de resolución no puede ser nula");
+        }
+        this.estado = EstadoContraoferta.ACEPTADA;
+        this.fechaResolucion = fechaResolucion;
     }
 
     public void rechazar(LocalDateTime fechaResolucion) {
-        // TODO implementar rechazo de la contraoferta.
-        // Debe cambiar el estado a RECHAZADA, registrar la fecha de resolución
-        // y validar que la contraoferta pueda ser resuelta.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (!puedeSerResuelta()) {
+            throw new IllegalStateException("La contraoferta no puede ser resuelta");
+        }
+        if (fechaResolucion == null) {
+            throw new IllegalArgumentException("La fecha de resolución no puede ser nula");
+        }
+        this.estado = EstadoContraoferta.RECHAZADA;
+        this.fechaResolucion = fechaResolucion;
     }
 
     public void cancelar(LocalDateTime fechaResolucion) {
-        // TODO implementar cancelación de la contraoferta.
-        // Debe cambiar el estado a CANCELADA, registrar la fecha de resolución
-        // y aplicar las reglas de negocio correspondientes.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (fechaResolucion == null) {
+            throw new IllegalArgumentException("La fecha de resolución no puede ser nula");
+        }
+        this.estado = EstadoContraoferta.CANCELADA;
+        this.fechaResolucion = fechaResolucion;
     }
 }

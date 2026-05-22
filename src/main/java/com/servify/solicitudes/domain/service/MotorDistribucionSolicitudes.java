@@ -1,5 +1,7 @@
 package com.servify.solicitudes.domain.service;
 
+import com.servify.solicitudes.domain.enumtype.EstadoDistribucion;
+import com.servify.solicitudes.domain.enumtype.EstadoSolicitud;
 import com.servify.solicitudes.domain.model.DistribucionSolicitud;
 import com.servify.solicitudes.domain.model.SolicitudServicio;
 
@@ -26,15 +28,34 @@ public class MotorDistribucionSolicitudes {
                                                                     Map<UUID, UUID> publicacionesPorPrestador,
                                                                     LocalDateTime fechaEnvio,
                                                                     LocalDateTime fechaExpiracion) {
-        // TODO implementar creación de distribuciones iniciales.
-        // Debe:
-        // - validar que la solicitud exista y esté en estado apto para distribución
-        // - recibir publicaciones compatibles ya filtradas por capas superiores
-        // - generar una DistribucionSolicitud por cada publicación/prestador compatible
-        // - asignar la ronda inicial de distribución
-        // - registrar fecha de envío y fecha de expiración
-        // - evitar crear distribuciones inválidas o duplicadas dentro de la misma operación
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        List<DistribucionSolicitud> distribuciones = new java.util.ArrayList<>();
+        
+        if (solicitud == null || publicacionesPorPrestador == null || publicacionesPorPrestador.isEmpty()) {
+            return distribuciones;
+        }
+        
+        int ronda = 1;
+        for (Map.Entry<UUID, UUID> entrada : publicacionesPorPrestador.entrySet()) {
+            UUID publicacionId = entrada.getKey();
+            UUID prestadorId = entrada.getValue();
+            
+            if (publicacionId != null && prestadorId != null) {
+                DistribucionSolicitud distribucion = new DistribucionSolicitud(
+                        UUID.randomUUID(),
+                        solicitud.getId(),
+                        publicacionId,
+                        prestadorId,
+                        EstadoDistribucion.ENVIADA,
+                        ronda,
+                        fechaEnvio,
+                        null,
+                        fechaExpiracion
+                );
+                distribuciones.add(distribucion);
+            }
+        }
+        
+        return distribuciones;
     }
 
     public List<DistribucionSolicitud> crearDistribucionesNuevaRonda(SolicitudServicio solicitud,
@@ -42,92 +63,173 @@ public class MotorDistribucionSolicitudes {
                                                                      List<DistribucionSolicitud> distribucionesExistentes,
                                                                      LocalDateTime fechaEnvio,
                                                                      LocalDateTime fechaExpiracion) {
-        // TODO implementar creación de distribuciones para una nueva ronda.
-        // Debe:
-        // - calcular la siguiente ronda de distribución
-        // - excluir publicaciones o prestadores que ya hayan participado
-        // - excluir distribuciones cerradas, respondidas o inválidas para reenvío
-        // - generar nuevas distribuciones válidas para ampliar el alcance de búsqueda
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        List<DistribucionSolicitud> distribucionesNuevas = new java.util.ArrayList<>();
+        
+        if (solicitud == null || publicacionesPorPrestador == null || publicacionesPorPrestador.isEmpty()) {
+            return distribucionesNuevas;
+        }
+        
+        Integer proximaRonda = calcularSiguienteRonda(distribucionesExistentes);
+        
+        for (Map.Entry<UUID, UUID> entrada : publicacionesPorPrestador.entrySet()) {
+            UUID publicacionId = entrada.getKey();
+            UUID prestadorId = entrada.getValue();
+            
+            if (publicacionId != null && prestadorId != null &&
+                    !yaFueDistribuidaAPublicacion(publicacionId, distribucionesExistentes) &&
+                    !yaFueDistribuidaAPrestador(prestadorId, distribucionesExistentes)) {
+                
+                DistribucionSolicitud distribucion = new DistribucionSolicitud(
+                        UUID.randomUUID(),
+                        solicitud.getId(),
+                        publicacionId,
+                        prestadorId,
+                        EstadoDistribucion.ENVIADA,
+                        proximaRonda,
+                        fechaEnvio,
+                        null,
+                        fechaExpiracion
+                );
+                distribucionesNuevas.add(distribucion);
+            }
+        }
+        
+        return distribucionesNuevas;
     }
 
     public boolean debeIniciarDistribucion(SolicitudServicio solicitud) {
-        // TODO implementar validación de inicio de distribución.
-        // Debe verificar que la solicitud:
-        // - exista
-        // - esté en estado BUSCANDO_PRESTADOR
-        // - tenga datos mínimos válidos para ser distribuida
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitud == null) {
+            return false;
+        }
+        
+        return solicitud.getEstado() == EstadoSolicitud.BUSCANDO_PRESTADOR;
     }
 
     public boolean debeAmpliarBusqueda(SolicitudServicio solicitud,
                                        List<DistribucionSolicitud> distribucionesExistentes,
                                        LocalDateTime fechaActual,
                                        Integer tiempoEsperaExpansionMinutos) {
-        // TODO implementar validación de ampliación de búsqueda.
-        // Debe verificar, como mínimo:
-        // - que la solicitud continúe buscando prestador
-        // - que no exista una respuesta favorable consolidada
-        // - que no exista asignación efectiva
-        // - que haya transcurrido el tiempo de espera configurado
-        // - que no queden distribuciones activas pendientes de respuesta dentro de la ronda actual
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitud == null || solicitud.getEstado() != EstadoSolicitud.BUSCANDO_PRESTADOR) {
+            return false;
+        }
+        
+        if (distribucionesExistentes == null || distribucionesExistentes.isEmpty()) {
+            return true;
+        }
+        
+        if (existenRespuestasFavorables(distribucionesExistentes)) {
+            return false;
+        }
+        
+        if (!existenDistribucionesActivas(distribucionesExistentes)) {
+            return true;
+        }
+        
+        if (tiempoEsperaExpansionMinutos == null || tiempoEsperaExpansionMinutos <= 0 || fechaActual == null) {
+            return false;
+        }
+        
+        LocalDateTime fechaUltimaDistribucion = distribucionesExistentes.stream()
+                .map(DistribucionSolicitud::getFechaEnvio)
+                .filter(f -> f != null)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+        
+        if (fechaUltimaDistribucion == null) {
+            return false;
+        }
+        
+        long minutosTranscurridos = java.time.temporal.ChronoUnit.MINUTES.between(fechaUltimaDistribucion, fechaActual);
+        return minutosTranscurridos >= tiempoEsperaExpansionMinutos;
     }
 
     public boolean existenDistribucionesActivas(List<DistribucionSolicitud> distribuciones) {
-        // TODO implementar verificación de distribuciones activas.
-        // Debe detectar si todavía existen distribuciones enviadas o en estado operativo
-        // que mantengan vigente el ciclo actual de búsqueda.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribuciones == null || distribuciones.isEmpty()) {
+            return false;
+        }
+        
+        return distribuciones.stream()
+                .anyMatch(d -> d != null && d.estaEnviada());
     }
 
     public boolean existenRespuestasFavorables(List<DistribucionSolicitud> distribuciones) {
-        // TODO implementar detección de respuestas favorables.
-        // Debe verificar si existe al menos una distribución aceptada
-        // o una situación equivalente que impida seguir expandiendo la búsqueda.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribuciones == null || distribuciones.isEmpty()) {
+            return false;
+        }
+        
+        return distribuciones.stream()
+                .anyMatch(d -> d != null && (d.estaAceptada() || d.estaContraofertada()));
     }
 
     public Integer calcularSiguienteRonda(List<DistribucionSolicitud> distribucionesExistentes) {
-        // TODO implementar cálculo de siguiente ronda.
-        // Debe determinar cuál es el número de ronda que corresponde utilizar
-        // para una nueva ampliación de búsqueda.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (distribucionesExistentes == null || distribucionesExistentes.isEmpty()) {
+            return 1;
+        }
+        
+        Integer maxRonda = distribucionesExistentes.stream()
+                .map(DistribucionSolicitud::getRondaDistribucion)
+                .filter(r -> r != null)
+                .max(Integer::compareTo)
+                .orElse(0);
+        
+        return maxRonda + 1;
     }
 
     public boolean yaFueDistribuidaAPublicacion(UUID publicacionServicioId,
                                                 List<DistribucionSolicitud> distribucionesExistentes) {
-        // TODO implementar validación de publicación ya distribuida.
-        // Debe verificar si la publicación indicada ya participó
-        // en alguna ronda previa de distribución para la misma solicitud.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (publicacionServicioId == null || distribucionesExistentes == null || distribucionesExistentes.isEmpty()) {
+            return false;
+        }
+        
+        return distribucionesExistentes.stream()
+                .anyMatch(d -> d != null && d.getPublicacionServicioId().equals(publicacionServicioId));
     }
 
     public boolean yaFueDistribuidaAPrestador(UUID prestadorId,
                                               List<DistribucionSolicitud> distribucionesExistentes) {
-        // TODO implementar validación de prestador ya distribuido.
-        // Debe verificar si el prestador indicado ya recibió la solicitud
-        // en el ciclo actual de distribución.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null || distribucionesExistentes == null || distribucionesExistentes.isEmpty()) {
+            return false;
+        }
+        
+        return distribucionesExistentes.stream()
+                .anyMatch(d -> d != null && d.getPrestadorId().equals(prestadorId));
     }
 
     public boolean puedeReenviarseAlPrestador(UUID prestadorId,
                                               List<DistribucionSolicitud> distribucionesExistentes) {
-        // TODO implementar validación de reenvío al prestador.
-        // Debe impedir reenvíos inválidos, especialmente cuando el prestador
-        // ya rechazó la solicitud dentro del mismo ciclo de búsqueda.
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (prestadorId == null || distribucionesExistentes == null) {
+            return true;
+        }
+        
+        return distribucionesExistentes.stream()
+                .filter(d -> d != null && d.getPrestadorId().equals(prestadorId))
+                .noneMatch(DistribucionSolicitud::estaRechazada);
     }
 
     public boolean debeCerrarCicloDistribucion(SolicitudServicio solicitud,
                                                List<DistribucionSolicitud> distribucionesExistentes) {
-        // TODO implementar validación de cierre del ciclo de distribución.
-        // Debe devolver true cuando ya no corresponda seguir distribuyendo la solicitud,
-        // por ejemplo porque:
-        // - fue cancelada
-        // - fue asignada
-        // - fue finalizada
-        // - o ya no puede recibir nuevas respuestas válidas
-        throw new UnsupportedOperationException("Pendiente de implementación");
+        if (solicitud == null) {
+            return true;
+        }
+
+        EstadoSolicitud estado = solicitud.getEstado();
+        if (estado == EstadoSolicitud.CANCELADA || estado == EstadoSolicitud.ASIGNADA || estado == EstadoSolicitud.FINALIZADA) {
+            return true;
+        }
+
+        if (distribucionesExistentes == null || distribucionesExistentes.isEmpty()) {
+            return false;
+        }
+
+        // Si ya existe una respuesta favorable (aceptada o contraofertada), cerrar ciclo
+        if (existenRespuestasFavorables(distribucionesExistentes)) {
+            return true;
+        }
+
+        // Si todas las distribuciones están cerradas, rechazadas o expiradas, no queda nada por distribuir
+        boolean todasNoDisponibles = distribucionesExistentes.stream()
+                .allMatch(d -> d == null || d.estaRechazada() || d.estaExpirada() || d.estaCerrada());
+
+        return todasNoDisponibles;
     }
 }
