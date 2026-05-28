@@ -62,7 +62,7 @@ public class ModerarPublicacionService implements ModerarPublicacionUseCase {
         }
         
         // Estados válidos para moderación
-        String[] estadosValidos = {"APROBADA", "RECHAZADA", "SUSPENDIDA"};
+        String[] estadosValidos = {"ACTIVA", "INACTIVA", "PAUSADA", "BLOQUEADA", "ELIMINADA"};
         
         boolean esValido = false;
         for (String estado : estadosValidos) {
@@ -74,7 +74,7 @@ public class ModerarPublicacionService implements ModerarPublicacionUseCase {
         
         if (!esValido) {
             throw new IllegalArgumentException(
-                    "El estado destino debe ser uno de: APROBADA, RECHAZADA, SUSPENDIDA");
+                    "El estado destino debe ser uno de: ACTIVA, INACTIVA, PAUSADA, BLOQUEADA, ELIMINADA");
         }
     }
 }

@@ -99,6 +99,10 @@ public class PublicacionServicio extends BaseEntity {
         if (!estaActiva()) {
             return false;
         }
+        return cumpleCondicionesParaActivarse();
+    }
+
+    public boolean cumpleCondicionesParaActivarse() {
         if (categoriaServicio == null || !categoriaServicio.estaActiva()) {
             return false;
         }
@@ -212,7 +216,7 @@ public class PublicacionServicio extends BaseEntity {
         if (EstadoPublicacion.ELIMINADA.equals(this.estado)) {
             throw new IllegalStateException("No se puede activar una publicación eliminada.");
         }
-        if (!puedeParticiparEnDistribucion()) {
+        if (!cumpleCondicionesParaActivarse()) {
             throw new IllegalStateException("La publicación no cumple las condiciones mínimas para activarse.");
         }
         this.estado = EstadoPublicacion.ACTIVA;

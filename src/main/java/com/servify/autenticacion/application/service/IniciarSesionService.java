@@ -56,8 +56,12 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         }
 
         LocalDateTime ahora = obtenerFechaActual();
-        validarCredencialYPassword(credencial, command.getPasswordPlano());
-        // persistir cambios en credencial (acceso exitoso o intento fallido)
+        try {
+            validarCredencialYPassword(credencial, command.getPasswordPlano());
+        } catch (RuntimeException exception) {
+            this.credencialAccesoRepositoryPort.guardar(credencial);
+            throw exception;
+        }
         this.credencialAccesoRepositoryPort.guardar(credencial);
 
         TokenResult access = tokenProviderPort.generarAccessToken(credencial.getUsuarioId(), credencial.getEmailAcceso());

@@ -113,9 +113,10 @@ public class ResolverContraofertaService implements ResolverContraofertaUseCase 
         if (decision == TipoDecisionSolicitud.ACEPTAR) {
             contraoferta.aceptar(fechaResolucion);
             // marcar la distribución como aceptada para permitir asignación
-            distribucionSolicitud.aceptar(fechaResolucion);
+            distribucionSolicitud.aceptarContraoferta(fechaResolucion);
         } else if (decision == TipoDecisionSolicitud.RECHAZAR) {
             contraoferta.rechazar(fechaResolucion);
+            distribucionSolicitud.rechazarContraoferta(fechaResolucion);
             // dejar la distribución en su estado previo (normalmente ENVIADA)
         } else {
             throw new IllegalArgumentException("Decisión no soportada: " + decision);

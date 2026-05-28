@@ -168,6 +168,28 @@ public class DistribucionSolicitud extends BaseEntity {
         this.fechaRespuesta = fechaRespuesta;
     }
 
+    public void aceptarContraoferta(LocalDateTime fechaRespuesta) {
+        if (fechaRespuesta == null) {
+            throw new IllegalArgumentException("La fecha de respuesta no puede ser nula");
+        }
+        if (!estaContraofertada()) {
+            throw new IllegalArgumentException("La distribucion no tiene una contraoferta pendiente de resolucion");
+        }
+        this.estado = EstadoDistribucion.ACEPTADA;
+        this.fechaRespuesta = fechaRespuesta;
+    }
+
+    public void rechazarContraoferta(LocalDateTime fechaRespuesta) {
+        if (fechaRespuesta == null) {
+            throw new IllegalArgumentException("La fecha de respuesta no puede ser nula");
+        }
+        if (!estaContraofertada()) {
+            throw new IllegalArgumentException("La distribucion no tiene una contraoferta pendiente de resolucion");
+        }
+        this.estado = EstadoDistribucion.RECHAZADA;
+        this.fechaRespuesta = fechaRespuesta;
+    }
+
     public void expirar(LocalDateTime fechaExpiracion) {
         if (this.estaEnviada()) {
             this.estado = EstadoDistribucion.EXPIRADA;
