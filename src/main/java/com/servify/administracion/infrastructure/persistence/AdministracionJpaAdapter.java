@@ -81,40 +81,32 @@ interface MedidaAdministrativaUsuarioJpaRepository extends JpaRepository<MedidaA
     List<MedidaAdministrativaUsuarioJpaEntity> findByUsuarioIdAndActivaTrue(Long usuarioId);
 }
 
-// ── Adapter ──────────────────────────────────────────────────
+// ── ConfiguracionJpaAdapter ───────────────────────────────────
 @Component
-public class AdministracionJpaAdapter implements ConfiguracionGeneralRepositoryPort,
-        ConfiguracionDistribucionPort, MedidaAdministrativaUsuarioRepositoryPort {
+class ConfiguracionJpaAdapter implements ConfiguracionGeneralRepositoryPort, ConfiguracionDistribucionPort {
 
     private final ConfiguracionGeneralJpaRepository configRepo;
-    private final MedidaAdministrativaUsuarioJpaRepository medidaRepo;
 
-    public AdministracionJpaAdapter(ConfiguracionGeneralJpaRepository configRepo,
-                                     MedidaAdministrativaUsuarioJpaRepository medidaRepo) {
+    ConfiguracionJpaAdapter(ConfiguracionGeneralJpaRepository configRepo) {
         this.configRepo = configRepo;
-        this.medidaRepo = medidaRepo;
     }
-
-    // ── ConfiguracionGeneralRepositoryPort ───────────────────
 
     @Override
     public ConfiguracionGeneral guardar(ConfiguracionGeneral c) {
-        ConfiguracionGeneralJpaEntity e = toConfigEntity(c);
+        ConfiguracionGeneralJpaEntity e = toEntity(c);
         if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
-        return toConfigDomain(configRepo.save(e));
+        return toDomain(configRepo.save(e));
     }
 
     @Override
     public Optional<ConfiguracionGeneral> buscarPorId(UUID configId) {
-        return configRepo.findById(configId).map(this::toConfigDomain);
+        return configRepo.findById(configId).map(this::toDomain);
     }
 
     @Override
     public Optional<ConfiguracionGeneral> obtenerVigente() {
-        return configRepo.findTopByOrderByFechaUltimaActualizacionDesc().map(this::toConfigDomain);
+        return configRepo.findTopByOrderByFechaUltimaActualizacionDesc().map(this::toDomain);
     }
-
-    // ── ConfiguracionDistribucionPort ────────────────────────
 
     @Override
     public Integer obtenerRadioBusquedaInicialKm() {
@@ -136,36 +128,7 @@ public class AdministracionJpaAdapter implements ConfiguracionGeneralRepositoryP
         return obtenerVigente().map(ConfiguracionGeneral::getPrecioBaseMinimoReferencia).orElse(BigDecimal.ZERO);
     }
 
-    // ── MedidaAdministrativaUsuarioRepositoryPort ────────────
-
-    @Override
-    public MedidaAdministrativaUsuario guardar(MedidaAdministrativaUsuario m) {
-        MedidaAdministrativaUsuarioJpaEntity e = toMedidaEntity(m);
-        if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
-        e.setUpdatedAt(LocalDateTime.now());
-        return toMedidaDomain(medidaRepo.save(e));
-    }
-
-    @Override
-    public Optional<MedidaAdministrativaUsuario> buscarPorId(UUID medidaId) {
-        return medidaRepo.findById(medidaId).map(this::toMedidaDomain);
-    }
-
-    @Override
-    public List<MedidaAdministrativaUsuario> buscarPorUsuarioId(UUID usuarioId) {
-        return medidaRepo.findByUsuarioId(usuarioId.getLeastSignificantBits())
-                .stream().map(this::toMedidaDomain).toList();
-    }
-
-    @Override
-    public List<MedidaAdministrativaUsuario> buscarActivasPorUsuarioId(UUID usuarioId) {
-        return medidaRepo.findByUsuarioIdAndActivaTrue(usuarioId.getLeastSignificantBits())
-                .stream().map(this::toMedidaDomain).toList();
-    }
-
-    // ── Mapeos ───────────────────────────────────────────────
-
-    private ConfiguracionGeneralJpaEntity toConfigEntity(ConfiguracionGeneral c) {
+    private ConfiguracionGeneralJpaEntity toEntity(ConfiguracionGeneral c) {
         ConfiguracionGeneralJpaEntity e = new ConfiguracionGeneralJpaEntity();
         e.setId(c.getId());
         e.setRadioBusquedaInicialKm(c.getRadioBusquedaInicialKm());
@@ -174,22 +137,56 @@ public class AdministracionJpaAdapter implements ConfiguracionGeneralRepositoryP
         e.setValidacionIdentidadRequerida(c.getValidacionIdentidadRequerida());
         e.setPrecioBaseMinimoReferencia(c.getPrecioBaseMinimoReferencia());
         e.setPlataformaActiva(c.getPlataformaActiva());
-        e.setFechaUltimaActualizacion(c.getFechaUltimaActualizacion() != null
-                ? c.getFechaUltimaActualizacion() : LocalDateTime.now());
+        e.setFechaUltimaActualizacion(c.getFechaUltimaActualizacion() != null ? c.getFechaUltimaActualizacion() : LocalDateTime.now());
         return e;
     }
 
-    private ConfiguracionGeneral toConfigDomain(ConfiguracionGeneralJpaEntity e) {
+    private ConfiguracionGeneral toDomain(ConfiguracionGeneralJpaEntity e) {
         ConfiguracionGeneral c = new ConfiguracionGeneral(
                 e.getId(), e.getRadioBusquedaInicialKm(), e.getRadioBusquedaExpansionKm(),
                 e.getTiempoEsperaExpansionMin(), e.getValidacionIdentidadRequerida(),
-                e.getPrecioBaseMinimoReferencia(), e.getPlataformaActiva(),
-                e.getFechaUltimaActualizacion());
+                e.getPrecioBaseMinimoReferencia(), e.getPlataformaActiva(), e.getFechaUltimaActualizacion());
         if (e.getCreatedAt() != null) c.marcarCreacion(e.getCreatedAt());
         return c;
     }
+}
 
-    private MedidaAdministrativaUsuarioJpaEntity toMedidaEntity(MedidaAdministrativaUsuario m) {
+// ── MedidaJpaAdapter ─────────────────────────────────────────
+@Component
+public class AdministracionJpaAdapter implements MedidaAdministrativaUsuarioRepositoryPort {
+
+    private final MedidaAdministrativaUsuarioJpaRepository medidaRepo;
+
+    public AdministracionJpaAdapter(MedidaAdministrativaUsuarioJpaRepository medidaRepo) {
+        this.medidaRepo = medidaRepo;
+    }
+
+    @Override
+    public MedidaAdministrativaUsuario guardar(MedidaAdministrativaUsuario m) {
+        MedidaAdministrativaUsuarioJpaEntity e = toEntity(m);
+        if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
+        e.setUpdatedAt(LocalDateTime.now());
+        return toDomain(medidaRepo.save(e));
+    }
+
+    @Override
+    public Optional<MedidaAdministrativaUsuario> buscarPorId(UUID medidaId) {
+        return medidaRepo.findById(medidaId).map(this::toDomain);
+    }
+
+    @Override
+    public List<MedidaAdministrativaUsuario> buscarPorUsuarioId(UUID usuarioId) {
+        return medidaRepo.findByUsuarioId(usuarioId.getLeastSignificantBits())
+                .stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<MedidaAdministrativaUsuario> buscarActivasPorUsuarioId(UUID usuarioId) {
+        return medidaRepo.findByUsuarioIdAndActivaTrue(usuarioId.getLeastSignificantBits())
+                .stream().map(this::toDomain).toList();
+    }
+
+    private MedidaAdministrativaUsuarioJpaEntity toEntity(MedidaAdministrativaUsuario m) {
         MedidaAdministrativaUsuarioJpaEntity e = new MedidaAdministrativaUsuarioJpaEntity();
         e.setId(m.getId());
         e.setUsuarioId(m.getUsuarioId() != null ? m.getUsuarioId().getLeastSignificantBits() : null);
@@ -202,7 +199,7 @@ public class AdministracionJpaAdapter implements ConfiguracionGeneralRepositoryP
         return e;
     }
 
-    private MedidaAdministrativaUsuario toMedidaDomain(MedidaAdministrativaUsuarioJpaEntity e) {
+    private MedidaAdministrativaUsuario toDomain(MedidaAdministrativaUsuarioJpaEntity e) {
         MedidaAdministrativaUsuario m = new MedidaAdministrativaUsuario(
                 e.getId(),
                 UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
