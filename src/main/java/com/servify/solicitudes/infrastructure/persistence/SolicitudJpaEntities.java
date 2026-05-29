@@ -122,16 +122,12 @@ class AsignacionServicioJpaEntity {
 class CalificacionJpaEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "asignacion_id", nullable = false, unique = true) private Long asignacionId;
-    @Column(name = "solicitante_id", nullable = false) private Long solicitanteId;
-    @Column(name = "prestador_id", nullable = false) private Long prestadorId;
     @Column(name = "puntaje", nullable = false) private Integer puntaje;
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
 
     protected CalificacionJpaEntity() {}
     public Long getId() { return id; } public void setId(Long id) { this.id = id; }
     public Long getAsignacionId() { return asignacionId; } public void setAsignacionId(Long v) { this.asignacionId = v; }
-    public Long getSolicitanteId() { return solicitanteId; } public void setSolicitanteId(Long v) { this.solicitanteId = v; }
-    public Long getPrestadorId() { return prestadorId; } public void setPrestadorId(Long v) { this.prestadorId = v; }
     public Integer getPuntaje() { return puntaje; } public void setPuntaje(Integer v) { this.puntaje = v; }
     public LocalDateTime getCreatedAt() { return createdAt; } public void setCreatedAt(LocalDateTime v) { this.createdAt = v; }
 }
