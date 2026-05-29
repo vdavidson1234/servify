@@ -284,11 +284,14 @@ class CalificacionJpaAdapterImpl implements CalificacionRepositoryPort {
 
     private final CalificacionJpaRepository calificacionRepo;
     private final AsignacionServicioJpaRepository asignacionRepo;
+    private final SolicitudServicioJpaRepository solicitudRepo;
 
     CalificacionJpaAdapterImpl(CalificacionJpaRepository calificacionRepo,
-                                AsignacionServicioJpaRepository asignacionRepo) {
+                                AsignacionServicioJpaRepository asignacionRepo,
+                                SolicitudServicioJpaRepository solicitudRepo) {
         this.calificacionRepo = calificacionRepo;
         this.asignacionRepo = asignacionRepo;
+        this.solicitudRepo = solicitudRepo;
     }
 
     @Override
@@ -316,15 +319,24 @@ class CalificacionJpaAdapterImpl implements CalificacionRepositoryPort {
 
     @Override
     public List<Calificacion> buscarPorPrestadorId(UUID prestadorId) {
-        return calificacionRepo.findAll().stream()
-                .filter(e -> UsuarioJpaAdapter.uuidFromLong(e.getPrestadorId()).equals(prestadorId))
+        // Resolvemos via asignacion -> solicitud -> prestador
+        return asignacionRepo.findAll().stream()
+                .filter(a -> UsuarioJpaAdapter.uuidFromLong(a.getPrestadorId()).equals(prestadorId))
+                .flatMap(a -> calificacionRepo.findByAsignacionId(a.getId()).stream())
                 .map(this::toDomain).toList();
     }
 
     @Override
     public List<Calificacion> buscarPorSolicitanteId(UUID solicitanteId) {
-        return calificacionRepo.findAll().stream()
-                .filter(e -> UsuarioJpaAdapter.uuidFromLong(e.getSolicitanteId()).equals(solicitanteId))
+        // Resolvemos via asignacion -> solicitud -> solicitante
+        return asignacionRepo.findAll().stream()
+                .flatMap(a -> {
+                    var solicitud = solicitudRepo.findById(a.getSolicitudId());
+                    if (solicitud.isPresent() && UsuarioJpaAdapter.uuidFromLong(solicitud.get().getSolicitanteId()).equals(solicitanteId)) {
+                        return calificacionRepo.findByAsignacionId(a.getId()).stream();
+                    }
+                    return java.util.stream.Stream.empty();
+                })
                 .map(this::toDomain).toList();
     }
 
@@ -336,21 +348,28 @@ class CalificacionJpaAdapterImpl implements CalificacionRepositoryPort {
                     .findFirst().ifPresent(ex -> e.setId(ex.getId()));
         }
         e.setAsignacionId(SolicitudServicioJpaAdapterImpl.longFromUuid(c.getAsignacionServicioId()));
-        e.setSolicitanteId(SolicitudServicioJpaAdapterImpl.longFromUuid(c.getSolicitanteId()));
-        e.setPrestadorId(SolicitudServicioJpaAdapterImpl.longFromUuid(c.getPrestadorId()));
         e.setPuntaje(c.getPuntaje());
         return e;
     }
 
     private Calificacion toDomain(CalificacionJpaEntity e) {
-        UUID solicitudId = asignacionRepo.findById(e.getAsignacionId())
-                .map(a -> UsuarioJpaAdapter.uuidFromLong(a.getSolicitudId())).orElse(null);
+        // Resolvemos solicitante y prestador via asignacion
+        UUID solicitudId = null;
+        UUID solicitanteId = null;
+        UUID prestadorId = null;
+        var asignacion = asignacionRepo.findById(e.getAsignacionId());
+        if (asignacion.isPresent()) {
+            solicitudId = UsuarioJpaAdapter.uuidFromLong(asignacion.get().getSolicitudId());
+            prestadorId = UsuarioJpaAdapter.uuidFromLong(asignacion.get().getPrestadorId());
+            var solicitud = solicitudRepo.findById(asignacion.get().getSolicitudId());
+            if (solicitud.isPresent()) {
+                solicitanteId = UsuarioJpaAdapter.uuidFromLong(solicitud.get().getSolicitanteId());
+            }
+        }
         Calificacion c = new Calificacion(
                 UsuarioJpaAdapter.uuidFromLong(e.getId()), solicitudId,
                 UsuarioJpaAdapter.uuidFromLong(e.getAsignacionId()),
-                UsuarioJpaAdapter.uuidFromLong(e.getSolicitanteId()),
-                UsuarioJpaAdapter.uuidFromLong(e.getPrestadorId()),
-                e.getPuntaje(), e.getCreatedAt());
+                solicitanteId, prestadorId, e.getPuntaje(), e.getCreatedAt());
         if (e.getCreatedAt() != null) c.marcarCreacion(e.getCreatedAt());
         return c;
     }
