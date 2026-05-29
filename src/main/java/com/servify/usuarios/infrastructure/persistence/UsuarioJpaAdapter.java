@@ -226,7 +226,7 @@ public class UsuarioJpaAdapter implements UsuarioRepositoryPort, PerfilUsuarioRe
     }
 
     // Convierte Long a UUID de forma determinista
-    static UUID uuidFromLong(Long id) {
+    public static UUID uuidFromLong(Long id) {
         if (id == null) return null;
         return new UUID(0L, id);
     }
