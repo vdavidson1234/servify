@@ -15,14 +15,18 @@ import com.servify.administracion.application.service.ModerarPublicacionService;
 import com.servify.administracion.application.service.ObtenerConfiguracionGeneralService;
 import com.servify.administracion.application.service.ObtenerMedidasAdministrativasDeUsuarioService;
 import com.servify.autenticacion.application.port.in.CerrarSesionUseCase;
+import com.servify.autenticacion.application.port.in.AutenticarConIdentidadExternaUseCase;
 import com.servify.autenticacion.application.port.in.IniciarSesionUseCase;
 import com.servify.autenticacion.application.port.in.RegistrarCredencialesUseCase;
 import com.servify.autenticacion.application.port.in.RenovarTokenUseCase;
 import com.servify.autenticacion.application.port.out.CredencialAccesoRepositoryPort;
+import com.servify.autenticacion.application.port.out.IdentidadExternaRepositoryPort;
 import com.servify.autenticacion.application.port.out.PasswordHasherPort;
+import com.servify.autenticacion.application.port.out.ProveedorIdentidadVerifierPort;
 import com.servify.autenticacion.application.port.out.RefreshTokenRepositoryPort;
 import com.servify.autenticacion.application.port.out.TokenProviderPort;
 import com.servify.autenticacion.application.port.out.UsuarioAutenticablePort;
+import com.servify.autenticacion.application.service.AutenticarConIdentidadExternaService;
 import com.servify.autenticacion.application.service.CerrarSesionService;
 import com.servify.autenticacion.application.service.IniciarSesionService;
 import com.servify.autenticacion.application.service.RegistrarCredencialesService;
@@ -93,6 +97,7 @@ import com.servify.solicitudes.domain.service.PoliticaFinalizacionMutua;
 import com.servify.usuarios.application.port.in.ActualizarPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CambiarEstadoUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CrearUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ListarUsuariosUseCase;
 import com.servify.usuarios.application.port.in.ObtenerConfiguracionCuentaUseCase;
 import com.servify.usuarios.application.port.in.ObtenerPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
@@ -100,6 +105,7 @@ import com.servify.usuarios.application.port.out.UsuarioRepositoryPort;
 import com.servify.usuarios.application.service.ActualizarPerfilUsuarioService;
 import com.servify.usuarios.application.service.CambiarEstadoUsuarioService;
 import com.servify.usuarios.application.service.CrearUsuarioService;
+import com.servify.usuarios.application.service.ListarUsuariosService;
 import com.servify.usuarios.application.service.ObtenerConfiguracionCuentaService;
 import com.servify.usuarios.application.service.ObtenerPerfilUsuarioService;
 import com.servify.usuarios.domain.service.PoliticaPerfilCompleto;
@@ -147,6 +153,11 @@ public class MvpUseCaseConfiguration {
     @Bean
     CrearUsuarioUseCase crearUsuarioUseCase(UsuarioRepositoryPort usuarioRepositoryPort) {
         return new CrearUsuarioService(usuarioRepositoryPort);
+    }
+
+    @Bean
+    ListarUsuariosUseCase listarUsuariosUseCase(UsuarioRepositoryPort usuarioRepositoryPort) {
+        return new ListarUsuariosService(usuarioRepositoryPort);
     }
 
     @Bean
@@ -214,14 +225,33 @@ public class MvpUseCaseConfiguration {
     RenovarTokenUseCase renovarTokenUseCase(
             RefreshTokenRepositoryPort refreshTokenRepositoryPort,
             CredencialAccesoRepositoryPort credencialAccesoRepositoryPort,
+            IdentidadExternaRepositoryPort identidadExternaRepositoryPort,
             TokenProviderPort tokenProviderPort,
             UsuarioAutenticablePort usuarioAutenticablePort
     ) {
         return new RenovarTokenService(
                 refreshTokenRepositoryPort,
                 credencialAccesoRepositoryPort,
+                identidadExternaRepositoryPort,
                 tokenProviderPort,
                 usuarioAutenticablePort
+        );
+    }
+
+    @Bean
+    AutenticarConIdentidadExternaUseCase autenticarConIdentidadExternaUseCase(
+            ProveedorIdentidadVerifierPort proveedorIdentidadVerifierPort,
+            IdentidadExternaRepositoryPort identidadExternaRepositoryPort,
+            UsuarioRepositoryPort usuarioRepositoryPort,
+            TokenProviderPort tokenProviderPort,
+            RefreshTokenRepositoryPort refreshTokenRepositoryPort
+    ) {
+        return new AutenticarConIdentidadExternaService(
+                proveedorIdentidadVerifierPort,
+                identidadExternaRepositoryPort,
+                usuarioRepositoryPort,
+                tokenProviderPort,
+                refreshTokenRepositoryPort
         );
     }
 

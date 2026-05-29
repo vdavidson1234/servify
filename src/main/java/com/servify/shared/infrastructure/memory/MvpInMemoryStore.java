@@ -2,6 +2,7 @@ package com.servify.shared.infrastructure.memory;
 
 import com.servify.administracion.domain.model.ConfiguracionGeneral;
 import com.servify.administracion.domain.model.MedidaAdministrativaUsuario;
+import com.servify.autenticacion.domain.model.IdentidadExterna;
 import com.servify.autenticacion.domain.model.CredencialAcceso;
 import com.servify.autenticacion.domain.model.RefreshToken;
 import com.servify.publicaciones.domain.model.CategoriaServicio;
@@ -34,6 +35,7 @@ public class MvpInMemoryStore {
     final Map<UUID, Calificacion> calificaciones = new ConcurrentHashMap<>();
     final Map<UUID, Contraoferta> contraofertas = new ConcurrentHashMap<>();
     final Map<UUID, CredencialAcceso> credenciales = new ConcurrentHashMap<>();
+    final Map<UUID, IdentidadExterna> identidadesExternas = new ConcurrentHashMap<>();
     final Map<UUID, RefreshToken> refreshTokens = new ConcurrentHashMap<>();
     final Map<UUID, ConfiguracionGeneral> configuraciones = new ConcurrentHashMap<>();
     final Map<UUID, MedidaAdministrativaUsuario> medidas = new ConcurrentHashMap<>();

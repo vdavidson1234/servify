@@ -111,6 +111,14 @@ React debe guardar:
 response.id -> usuarioId
 ```
 
+Consulta rapida para verificar backend local:
+
+```http
+GET /usuarios?estado=ACTIVO
+```
+
+Si no hay usuarios creados en la ejecucion actual, responde `[]`. Con adapters en memoria, los datos se reinician al reiniciar el backend.
+
 ### 2. Registrar credenciales
 
 Pantalla sugerida: registro / set password.
@@ -157,6 +165,62 @@ response.refreshToken.token
 ```
 
 Nota: el MVP emite tokens, pero todavia no hay filtro de seguridad aplicado a los endpoints.
+
+### 3.b Login social con Google o LinkedIn
+
+Pantalla sugerida: login / registro social desde Expo.
+
+El frontend hace el login con Google o LinkedIn, obtiene un `idToken` OIDC y lo manda al backend. El backend valida firma, issuer, audience/client-id, expiracion, `sub`, `email` y `email_verified`; luego crea o vincula el usuario y devuelve la misma forma de `SesionResult` que el login por password.
+
+Google:
+
+```http
+POST /auth/social/google
+```
+
+LinkedIn:
+
+```http
+POST /auth/social/linkedin
+```
+
+Body:
+
+```json
+{
+  "idToken": "ID_TOKEN_DEL_PROVEEDOR",
+  "nonce": "NONCE_USADO_EN_EL_LOGIN",
+  "rol": "USUARIO",
+  "telefono": "1111"
+}
+```
+
+`nonce`, `rol` y `telefono` son opcionales. Para usuarios nuevos, el backend usa `USUARIO` por defecto. No permite crear `ADMIN` desde login social.
+
+React/Expo debe guardar lo mismo que en login por password:
+
+```text
+response.usuarioId
+response.emailAcceso
+response.accessToken.token
+response.refreshToken.token
+```
+
+Config necesaria en backend:
+
+```properties
+servify.auth.external.google.client-ids=${SERVIFY_GOOGLE_CLIENT_IDS:}
+servify.auth.external.linkedin.client-ids=${SERVIFY_LINKEDIN_CLIENT_IDS:}
+```
+
+En PowerShell local:
+
+```powershell
+$env:SERVIFY_GOOGLE_CLIENT_IDS="CLIENT_ID_GOOGLE_EXPO_O_WEB"
+$env:SERVIFY_LINKEDIN_CLIENT_IDS="CLIENT_ID_LINKEDIN"
+```
+
+Guia completa: `docs/autenticacion-social-google-linkedin-servify.md`.
 
 ### 4. Completar perfil de prestador
 
@@ -589,6 +653,6 @@ asignacionServicioId
 Resultado verificado:
 
 ```text
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```

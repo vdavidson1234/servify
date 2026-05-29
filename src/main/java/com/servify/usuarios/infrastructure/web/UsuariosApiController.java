@@ -11,11 +11,13 @@ import com.servify.usuarios.application.dto.UsuarioResult;
 import com.servify.usuarios.application.port.in.ActualizarPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CambiarEstadoUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CrearUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ListarUsuariosUseCase;
 import com.servify.usuarios.application.port.in.ObtenerConfiguracionCuentaUseCase;
 import com.servify.usuarios.application.port.in.ObtenerPerfilUsuarioUseCase;
 import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 import com.servify.usuarios.domain.enumtype.Rol;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsuariosApiController {
 
     private final CrearUsuarioUseCase crearUsuarioUseCase;
+    private final ListarUsuariosUseCase listarUsuariosUseCase;
     private final ActualizarPerfilUsuarioUseCase actualizarPerfilUsuarioUseCase;
     private final ObtenerPerfilUsuarioUseCase obtenerPerfilUsuarioUseCase;
     private final ObtenerConfiguracionCuentaUseCase obtenerConfiguracionCuentaUseCase;
@@ -39,12 +43,14 @@ public class UsuariosApiController {
 
     public UsuariosApiController(
             CrearUsuarioUseCase crearUsuarioUseCase,
+            ListarUsuariosUseCase listarUsuariosUseCase,
             ActualizarPerfilUsuarioUseCase actualizarPerfilUsuarioUseCase,
             ObtenerPerfilUsuarioUseCase obtenerPerfilUsuarioUseCase,
             ObtenerConfiguracionCuentaUseCase obtenerConfiguracionCuentaUseCase,
             CambiarEstadoUsuarioUseCase cambiarEstadoUsuarioUseCase
     ) {
         this.crearUsuarioUseCase = crearUsuarioUseCase;
+        this.listarUsuariosUseCase = listarUsuariosUseCase;
         this.actualizarPerfilUsuarioUseCase = actualizarPerfilUsuarioUseCase;
         this.obtenerPerfilUsuarioUseCase = obtenerPerfilUsuarioUseCase;
         this.obtenerConfiguracionCuentaUseCase = obtenerConfiguracionCuentaUseCase;
@@ -59,6 +65,13 @@ public class UsuariosApiController {
         return ResponseEntity
                 .created(URI.create("/api/v1/usuarios/" + result.getId()))
                 .body(result);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UsuarioResult>> listarUsuarios(
+            @RequestParam(defaultValue = "ACTIVO") EstadoUsuario estado
+    ) {
+        return ResponseEntity.ok(listarUsuariosUseCase.listarPorEstado(estado));
     }
 
     @PutMapping("/{usuarioId}/perfil")

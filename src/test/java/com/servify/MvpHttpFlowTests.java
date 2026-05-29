@@ -3,6 +3,7 @@ package com.servify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -155,6 +156,54 @@ class MvpHttpFlowTests {
                 .andExpect(status().isOk());
 
         assertNotNull(asignacionId);
+    }
+
+    @Test
+    void listarUsuariosActivos_exponeEndpointSimpleParaVerificarBackendLocal() throws Exception {
+        UUID usuarioId = crearUsuario("diagnostico-http@servify.test");
+
+        JsonNode usuarios = responseJson(getPath("/api/v1/usuarios?estado=ACTIVO"));
+
+        assertNotNull(usuarioId);
+        org.junit.jupiter.api.Assertions.assertTrue(usuarios.isArray());
+        org.junit.jupiter.api.Assertions.assertTrue(usuarios.size() >= 1);
+    }
+
+    @Test
+    void autenticacionSocialGoogle_creaSesionYPermiteRenovarRefreshToken() throws Exception {
+        JsonNode sesion = responseJson(postPath("/api/v1/auth/social/google", """
+                {
+                  "idToken": "fake:google:google-sub-http:social-http@servify.test",
+                  "rol": "USUARIO"
+                }
+                """));
+
+        assertNotNull(sesion.get("usuarioId").asText());
+        assertEquals("social-http@servify.test", sesion.get("emailAcceso").asText());
+
+        String refreshToken = sesion.get("refreshToken").get("token").asText();
+        JsonNode sesionRenovada = responseJson(postPath("/api/v1/auth/refresh", """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken)));
+
+        assertEquals(sesion.get("usuarioId").asText(), sesionRenovada.get("usuarioId").asText());
+        assertEquals("social-http@servify.test", sesionRenovada.get("emailAcceso").asText());
+    }
+
+    @Test
+    void autenticacionSocialLinkedin_vinculaUsuarioExistentePorEmailVerificado() throws Exception {
+        UUID usuarioId = crearUsuario("linkedin-http@servify.test");
+
+        JsonNode sesion = responseJson(postPath("/api/v1/auth/social/linkedin", """
+                {
+                  "idToken": "fake:linkedin:linkedin-sub-http:linkedin-http@servify.test"
+                }
+                """));
+
+        assertEquals(usuarioId.toString(), sesion.get("usuarioId").asText());
+        assertEquals("linkedin-http@servify.test", sesion.get("emailAcceso").asText());
     }
 
     private UUID crearUsuario(String email) throws Exception {

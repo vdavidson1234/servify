@@ -1,7 +1,9 @@
 package com.servify.usuarios.application.port.out;
 
 import com.servify.usuarios.domain.model.Usuario;
+import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,4 +32,9 @@ public interface UsuarioRepositoryPort {
      * Indica si existe un usuario registrado con el email provisto.
      */
     boolean existePorEmail(String email);
+
+    /**
+     * Lista usuarios por estado para consultas operativas simples.
+     */
+    List<Usuario> listarPorEstado(EstadoUsuario estado);
 }

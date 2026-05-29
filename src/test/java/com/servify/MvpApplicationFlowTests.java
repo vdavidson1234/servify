@@ -479,6 +479,13 @@ class MvpApplicationFlowTests {
         public boolean existePorEmail(String email) {
             return buscarPorEmail(email).isPresent();
         }
+
+        @Override
+        public List<Usuario> listarPorEstado(com.servify.usuarios.domain.enumtype.EstadoUsuario estado) {
+            return usuarios.values().stream()
+                    .filter(usuario -> usuario.getEstado() == estado)
+                    .toList();
+        }
     }
 
     private static class PerfilRepo implements PerfilUsuarioRepositoryPort {

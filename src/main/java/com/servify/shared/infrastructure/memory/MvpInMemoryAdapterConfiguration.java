@@ -9,11 +9,14 @@ import com.servify.administracion.domain.model.ConfiguracionGeneral;
 import com.servify.administracion.domain.model.MedidaAdministrativaUsuario;
 import com.servify.autenticacion.application.dto.TokenResult;
 import com.servify.autenticacion.application.port.out.CredencialAccesoRepositoryPort;
+import com.servify.autenticacion.application.port.out.IdentidadExternaRepositoryPort;
 import com.servify.autenticacion.application.port.out.PasswordHasherPort;
 import com.servify.autenticacion.application.port.out.RefreshTokenRepositoryPort;
 import com.servify.autenticacion.application.port.out.TokenProviderPort;
 import com.servify.autenticacion.application.port.out.UsuarioAutenticablePort;
+import com.servify.autenticacion.domain.enumtype.ProveedorIdentidadExterna;
 import com.servify.autenticacion.domain.model.CredencialAcceso;
+import com.servify.autenticacion.domain.model.IdentidadExterna;
 import com.servify.autenticacion.domain.model.RefreshToken;
 import com.servify.publicaciones.application.port.out.CategoriaServicioRepositoryPort;
 import com.servify.publicaciones.application.port.out.PublicacionServicioRepositoryPort;
@@ -43,6 +46,7 @@ import com.servify.solicitudes.domain.model.DistribucionSolicitud;
 import com.servify.solicitudes.domain.model.SolicitudServicio;
 import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
 import com.servify.usuarios.application.port.out.UsuarioRepositoryPort;
+import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 import com.servify.usuarios.domain.model.PerfilUsuario;
 import com.servify.usuarios.domain.model.Usuario;
 import java.math.BigDecimal;
@@ -150,6 +154,11 @@ public class MvpInMemoryAdapterConfiguration {
     }
 
     @Bean
+    IdentidadExternaRepositoryPort identidadExternaRepositoryPort(MvpInMemoryStore store) {
+        return new IdentidadExternaMemoryRepository(store);
+    }
+
+    @Bean
     PublicacionesCompatiblesPort publicacionesCompatiblesPort(
             MvpInMemoryStore store,
             PoliticaCompatibilidadPublicacion politicaCompatibilidadPublicacion
@@ -213,6 +222,14 @@ public class MvpInMemoryAdapterConfiguration {
         @Override
         public boolean existePorEmail(String email) {
             return buscarPorEmail(email).isPresent();
+        }
+
+        @Override
+        public List<Usuario> listarPorEstado(EstadoUsuario estado) {
+            return store.usuarios.values().stream()
+                    .filter(usuario -> estado == null || usuario.getEstado() == estado)
+                    .sorted(Comparator.comparing(Usuario::getFechaRegistro))
+                    .toList();
         }
     }
 
@@ -782,6 +799,55 @@ public class MvpInMemoryAdapterConfiguration {
             return store.refreshTokens.values().stream()
                     .filter(refreshToken -> Objects.equals(refreshToken.getUsuarioId(), usuarioId))
                     .filter(RefreshToken::estaActivo)
+                    .toList();
+        }
+    }
+
+    private static class IdentidadExternaMemoryRepository implements IdentidadExternaRepositoryPort {
+
+        private final MvpInMemoryStore store;
+
+        private IdentidadExternaMemoryRepository(MvpInMemoryStore store) {
+            this.store = store;
+        }
+
+        @Override
+        public IdentidadExterna guardar(IdentidadExterna identidadExterna) {
+            store.touch(identidadExterna);
+            store.identidadesExternas.put(identidadExterna.getId(), identidadExterna);
+            return identidadExterna;
+        }
+
+        @Override
+        public Optional<IdentidadExterna> buscarPorId(UUID identidadExternaId) {
+            return Optional.ofNullable(store.identidadesExternas.get(identidadExternaId));
+        }
+
+        @Override
+        public Optional<IdentidadExterna> buscarPorProveedorYSubject(
+                ProveedorIdentidadExterna proveedor,
+                String subject
+        ) {
+            return store.identidadesExternas.values().stream()
+                    .filter(identidad -> identidad.correspondeA(proveedor, subject))
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<IdentidadExterna> buscarPorUsuarioIdYProveedor(
+                UUID usuarioId,
+                ProveedorIdentidadExterna proveedor
+        ) {
+            return store.identidadesExternas.values().stream()
+                    .filter(identidad -> identidad.perteneceAUsuario(usuarioId))
+                    .filter(identidad -> identidad.getProveedor() == proveedor)
+                    .findFirst();
+        }
+
+        @Override
+        public List<IdentidadExterna> buscarPorUsuarioId(UUID usuarioId) {
+            return store.identidadesExternas.values().stream()
+                    .filter(identidad -> identidad.perteneceAUsuario(usuarioId))
                     .toList();
         }
     }
