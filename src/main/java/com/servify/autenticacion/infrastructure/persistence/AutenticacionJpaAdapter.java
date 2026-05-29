@@ -78,43 +78,37 @@ interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenJpaEntity,
     List<RefreshTokenJpaEntity> findByUsuarioIdAndActivoTrue(Long usuarioId);
 }
 
-// ── Adapter ──────────────────────────────────────────────────
+// ── CredencialAccesoJpaAdapter ───────────────────────────────
 @Component
-public class AutenticacionJpaAdapter implements CredencialAccesoRepositoryPort, RefreshTokenRepositoryPort {
+class CredencialAccesoJpaAdapter implements CredencialAccesoRepositoryPort {
 
     private final CredencialAccesoJpaRepository credencialRepo;
-    private final RefreshTokenJpaRepository refreshTokenRepo;
 
-    public AutenticacionJpaAdapter(CredencialAccesoJpaRepository credencialRepo,
-                                    RefreshTokenJpaRepository refreshTokenRepo) {
+    CredencialAccesoJpaAdapter(CredencialAccesoJpaRepository credencialRepo) {
         this.credencialRepo = credencialRepo;
-        this.refreshTokenRepo = refreshTokenRepo;
     }
-
-    // ── CredencialAccesoRepositoryPort ───────────────────────
 
     @Override
     public CredencialAcceso guardar(CredencialAcceso c) {
-        CredencialAccesoJpaEntity e = toCredencialEntity(c);
+        CredencialAccesoJpaEntity e = toEntity(c);
         if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
         e.setUpdatedAt(LocalDateTime.now());
-        return toCredencialDomain(credencialRepo.save(e));
+        return toDomain(credencialRepo.save(e));
     }
 
     @Override
     public Optional<CredencialAcceso> buscarPorId(UUID credencialId) {
-        return credencialRepo.findById(credencialId).map(this::toCredencialDomain);
+        return credencialRepo.findById(credencialId).map(this::toDomain);
     }
 
     @Override
     public Optional<CredencialAcceso> buscarPorUsuarioId(UUID usuarioId) {
-        return credencialRepo.findByUsuarioId(UsuarioJpaAdapter.uuidFromLong(usuarioId).getLeastSignificantBits())
-                .map(this::toCredencialDomain);
+        return credencialRepo.findByUsuarioId(usuarioId.getLeastSignificantBits()).map(this::toDomain);
     }
 
     @Override
     public Optional<CredencialAcceso> buscarPorEmailAcceso(String emailAcceso) {
-        return credencialRepo.findByEmailAccesoIgnoreCase(emailAcceso).map(this::toCredencialDomain);
+        return credencialRepo.findByEmailAccesoIgnoreCase(emailAcceso).map(this::toDomain);
     }
 
     @Override
@@ -122,34 +116,7 @@ public class AutenticacionJpaAdapter implements CredencialAccesoRepositoryPort, 
         return credencialRepo.existsByEmailAccesoIgnoreCase(emailAcceso);
     }
 
-    // ── RefreshTokenRepositoryPort ───────────────────────────
-
-    @Override
-    public RefreshToken guardar(RefreshToken r) {
-        RefreshTokenJpaEntity e = toRefreshEntity(r);
-        if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
-        return toRefreshDomain(refreshTokenRepo.save(e));
-    }
-
-    @Override
-    public Optional<RefreshToken> buscarPorId(UUID refreshTokenId) {
-        return refreshTokenRepo.findById(refreshTokenId).map(this::toRefreshDomain);
-    }
-
-    @Override
-    public Optional<RefreshToken> buscarPorTokenHash(String tokenHash) {
-        return refreshTokenRepo.findByTokenHash(tokenHash).map(this::toRefreshDomain);
-    }
-
-    @Override
-    public List<RefreshToken> buscarActivosPorUsuarioId(UUID usuarioId) {
-        return refreshTokenRepo.findByUsuarioIdAndActivoTrue(usuarioId.getLeastSignificantBits())
-                .stream().map(this::toRefreshDomain).toList();
-    }
-
-    // ── Mapeos ───────────────────────────────────────────────
-
-    private CredencialAccesoJpaEntity toCredencialEntity(CredencialAcceso c) {
+    private CredencialAccesoJpaEntity toEntity(CredencialAcceso c) {
         CredencialAccesoJpaEntity e = new CredencialAccesoJpaEntity();
         e.setId(c.getId());
         e.setUsuarioId(c.getUsuarioId() != null ? c.getUsuarioId().getLeastSignificantBits() : null);
@@ -161,18 +128,51 @@ public class AutenticacionJpaAdapter implements CredencialAccesoRepositoryPort, 
         return e;
     }
 
-    private CredencialAcceso toCredencialDomain(CredencialAccesoJpaEntity e) {
+    private CredencialAcceso toDomain(CredencialAccesoJpaEntity e) {
         CredencialAcceso c = new CredencialAcceso(
-                e.getId(),
-                UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
+                e.getId(), UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
                 e.getEmailAcceso(), e.getPasswordHash(), e.getHabilitada(),
                 e.getUltimoAcceso(), e.getIntentosFallidos());
         if (e.getCreatedAt() != null) c.marcarCreacion(e.getCreatedAt());
         if (e.getUpdatedAt() != null) c.marcarModificacion(e.getUpdatedAt());
         return c;
     }
+}
 
-    private RefreshTokenJpaEntity toRefreshEntity(RefreshToken r) {
+// ── RefreshTokenJpaAdapter ───────────────────────────────────
+@Component
+public class AutenticacionJpaAdapter implements RefreshTokenRepositoryPort {
+
+    private final RefreshTokenJpaRepository refreshTokenRepo;
+
+    public AutenticacionJpaAdapter(RefreshTokenJpaRepository refreshTokenRepo) {
+        this.refreshTokenRepo = refreshTokenRepo;
+    }
+
+    @Override
+    public RefreshToken guardar(RefreshToken r) {
+        RefreshTokenJpaEntity e = toEntity(r);
+        if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
+        return toDomain(refreshTokenRepo.save(e));
+    }
+
+    @Override
+    public Optional<RefreshToken> buscarPorId(UUID refreshTokenId) {
+        return refreshTokenRepo.findById(refreshTokenId).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<RefreshToken> buscarPorTokenHash(String tokenHash) {
+        return refreshTokenRepo.findByTokenHash(tokenHash).map(this::toDomain);
+    }
+
+    @Override
+    public List<RefreshToken> buscarActivosPorUsuarioId(UUID usuarioId) {
+        return refreshTokenRepo.findByUsuarioIdAndActivoTrue(usuarioId.getLeastSignificantBits())
+                .stream().map(this::toDomain).toList();
+    }
+
+    private RefreshTokenJpaEntity toEntity(RefreshToken r) {
         RefreshTokenJpaEntity e = new RefreshTokenJpaEntity();
         e.setId(r.getId());
         e.setUsuarioId(r.getUsuarioId() != null ? r.getUsuarioId().getLeastSignificantBits() : null);
@@ -185,10 +185,9 @@ public class AutenticacionJpaAdapter implements CredencialAccesoRepositoryPort, 
         return e;
     }
 
-    private RefreshToken toRefreshDomain(RefreshTokenJpaEntity e) {
+    private RefreshToken toDomain(RefreshTokenJpaEntity e) {
         RefreshToken r = new RefreshToken(
-                e.getId(),
-                UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
+                e.getId(), UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
                 e.getCredencialAccesoId(), e.getTokenHash(),
                 e.getFechaEmision(), e.getFechaExpiracion(),
                 e.getFechaRevocacion(), e.getActivo());
