@@ -26,7 +26,8 @@ public class PoliticaCompatibilidadPublicacion {
         if (!esCompatiblePorModalidad(publicacion, modalidadRequerida)) {
             return false;
         }
-        if (!esCompatiblePorUbicacion(publicacion, ubicacionRequerida)) {
+        if (!ModalidadServicio.VIRTUAL.equals(modalidadRequerida)
+                && !esCompatiblePorUbicacion(publicacion, ubicacionRequerida)) {
             return false;
         }
         if (!esCompatiblePorDisponibilidad(publicacion, disponibilidadRequerida)) {

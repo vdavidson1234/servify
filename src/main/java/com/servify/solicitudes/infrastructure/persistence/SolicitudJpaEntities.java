@@ -93,8 +93,8 @@ class AsignacionServicioJpaEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "solicitud_id", nullable = false) private Long solicitudId;
     @Column(name = "distribucion_id", nullable = false) private Long distribucionId;
-    @Column(name = "prestador_id") private Long prestadorId;
-    @Column(name = "publicacion_id") private Long publicacionId;
+    @Column(name = "prestador_id", nullable = false) private Long prestadorId;
+    @Column(name = "publicacion_id", nullable = false) private Long publicacionId;
     @Column(name = "precio_acordado") private BigDecimal precioAcordado;
     @Column(name = "estado", nullable = false) private String estado;
     @Column(name = "fecha_asignacion") private LocalDateTime fechaAsignacion;

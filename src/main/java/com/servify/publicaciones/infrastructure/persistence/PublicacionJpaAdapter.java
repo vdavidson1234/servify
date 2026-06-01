@@ -153,7 +153,17 @@ public class PublicacionJpaAdapter implements PublicacionServicioRepositoryPort,
     public boolean existePorUsuarioIdYTitulo(UUID usuarioId, String titulo) {
         return publicacionRepo.findAll().stream()
                 .anyMatch(e -> UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()).equals(usuarioId)
+                        && !"eliminada".equalsIgnoreCase(e.getEstado())
                         && e.getTitulo() != null && e.getTitulo().equalsIgnoreCase(titulo));
+    }
+
+    @Override
+    public boolean existePorUsuarioIdTituloYLocalidad(UUID usuarioId, String titulo, String localidad) {
+        return publicacionRepo.findAll().stream()
+                .anyMatch(e -> UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()).equals(usuarioId)
+                        && !"eliminada".equalsIgnoreCase(e.getEstado())
+                        && e.getTitulo() != null && e.getTitulo().equalsIgnoreCase(titulo)
+                        && mismaLocalidad(e.getLocalidad(), localidad));
     }
 
     @Override
@@ -241,5 +251,12 @@ public class PublicacionJpaAdapter implements PublicacionServicioRepositoryPort,
     private Long longFromUuid(UUID uuid) {
         if (uuid == null) return null;
         return uuid.getLeastSignificantBits();
+    }
+
+    private boolean mismaLocalidad(String actual, String requerida) {
+        if (actual == null || actual.isBlank()) {
+            return requerida == null || requerida.isBlank();
+        }
+        return requerida != null && actual.equalsIgnoreCase(requerida);
     }
 }

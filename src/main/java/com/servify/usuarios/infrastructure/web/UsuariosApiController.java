@@ -7,15 +7,19 @@ import com.servify.usuarios.application.dto.CambiarEstadoUsuarioCommand;
 import com.servify.usuarios.application.dto.ConfiguracionCuentaResult;
 import com.servify.usuarios.application.dto.CrearUsuarioCommand;
 import com.servify.usuarios.application.dto.PerfilUsuarioResult;
+import com.servify.usuarios.application.dto.ReputacionUsuarioResult;
 import com.servify.usuarios.application.dto.UsuarioResult;
 import com.servify.usuarios.application.port.in.ActualizarPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CambiarEstadoUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CrearUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ListarUsuariosUseCase;
 import com.servify.usuarios.application.port.in.ObtenerConfiguracionCuentaUseCase;
 import com.servify.usuarios.application.port.in.ObtenerPerfilUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ObtenerReputacionUsuarioUseCase;
 import com.servify.usuarios.domain.enumtype.EstadoUsuario;
 import com.servify.usuarios.domain.enumtype.Rol;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,22 +37,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsuariosApiController {
 
     private final CrearUsuarioUseCase crearUsuarioUseCase;
+    private final ListarUsuariosUseCase listarUsuariosUseCase;
     private final ActualizarPerfilUsuarioUseCase actualizarPerfilUsuarioUseCase;
     private final ObtenerPerfilUsuarioUseCase obtenerPerfilUsuarioUseCase;
     private final ObtenerConfiguracionCuentaUseCase obtenerConfiguracionCuentaUseCase;
+    private final ObtenerReputacionUsuarioUseCase obtenerReputacionUsuarioUseCase;
     private final CambiarEstadoUsuarioUseCase cambiarEstadoUsuarioUseCase;
 
     public UsuariosApiController(
             CrearUsuarioUseCase crearUsuarioUseCase,
+            ListarUsuariosUseCase listarUsuariosUseCase,
             ActualizarPerfilUsuarioUseCase actualizarPerfilUsuarioUseCase,
             ObtenerPerfilUsuarioUseCase obtenerPerfilUsuarioUseCase,
             ObtenerConfiguracionCuentaUseCase obtenerConfiguracionCuentaUseCase,
+            ObtenerReputacionUsuarioUseCase obtenerReputacionUsuarioUseCase,
             CambiarEstadoUsuarioUseCase cambiarEstadoUsuarioUseCase
     ) {
         this.crearUsuarioUseCase = crearUsuarioUseCase;
+        this.listarUsuariosUseCase = listarUsuariosUseCase;
         this.actualizarPerfilUsuarioUseCase = actualizarPerfilUsuarioUseCase;
         this.obtenerPerfilUsuarioUseCase = obtenerPerfilUsuarioUseCase;
         this.obtenerConfiguracionCuentaUseCase = obtenerConfiguracionCuentaUseCase;
+        this.obtenerReputacionUsuarioUseCase = obtenerReputacionUsuarioUseCase;
         this.cambiarEstadoUsuarioUseCase = cambiarEstadoUsuarioUseCase;
     }
 
@@ -59,6 +70,13 @@ public class UsuariosApiController {
         return ResponseEntity
                 .created(URI.create("/api/v1/usuarios/" + result.getId()))
                 .body(result);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UsuarioResult>> listarUsuarios(
+            @RequestParam(defaultValue = "ACTIVO") EstadoUsuario estado
+    ) {
+        return ResponseEntity.ok(listarUsuariosUseCase.listarPorEstado(estado));
     }
 
     @PutMapping("/{usuarioId}/perfil")
@@ -93,6 +111,11 @@ public class UsuariosApiController {
         return obtenerConfiguracionCuentaUseCase.obtenerPorUsuarioId(usuarioId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{usuarioId}/reputacion")
+    public ResponseEntity<ReputacionUsuarioResult> obtenerReputacion(@PathVariable UUID usuarioId) {
+        return ResponseEntity.ok(obtenerReputacionUsuarioUseCase.obtenerPorUsuarioId(usuarioId));
     }
 
     @PatchMapping("/{usuarioId}/estado")

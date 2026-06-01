@@ -17,6 +17,7 @@ import com.servify.usuarios.domain.valueobject.NombreCompleto;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -150,6 +151,14 @@ public class UsuarioJpaAdapter implements UsuarioRepositoryPort,
     @Override
     public boolean existePorEmail(String email) {
         return usuarioRepo.existsByEmail(email);
+    }
+
+    @Override
+    public List<Usuario> listarPorEstado(EstadoUsuario estado) {
+        return usuarioRepo.findAll().stream()
+                .filter(e -> estado == null || e.getEstado().equalsIgnoreCase(estado.name()))
+                .map(e -> toDomain(e, perfilRepo.findByUsuarioId(e.getId()).orElse(null)))
+                .toList();
     }
 
     // ── UsuarioPublicadorPort ────────────────────────────────

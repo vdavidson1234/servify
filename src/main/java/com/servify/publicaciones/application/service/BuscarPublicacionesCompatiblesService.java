@@ -10,6 +10,7 @@ import com.servify.publicaciones.domain.model.PublicacionServicio;
 import com.servify.publicaciones.domain.service.PoliticaCompatibilidadPublicacion;
 import com.servify.shared.domain.enumtype.ModalidadServicio;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,8 +41,10 @@ public class BuscarPublicacionesCompatiblesService implements BuscarPublicacione
         List<PublicacionServicio> candidatas = obtenerCandidatas(query);
         return candidatas.stream()
                 .filter(p -> esCompatible(p, categoriaRequerida, query))
-                .filter(p -> query.getPrecioMaximo() == null
+                .filter(p -> !tienePrecioMaximo(query.getPrecioMaximo())
+                        || p.getPrecioBase() == null
                         || p.getPrecioBase().compareTo(query.getPrecioMaximo()) <= 0)
+                .filter(p -> estaDentroDelRadio(p, query))
                 .map(p -> construirResultado(p, calcularDistanciaKm(p, query)))
                 .collect(Collectors.toList());
     }
@@ -107,6 +110,22 @@ public class BuscarPublicacionesCompatiblesService implements BuscarPublicacione
                 publicacionServicio.getUbicacion().getLatitud(),
                 publicacionServicio.getUbicacion().getLongitud()
         );
+    }
+
+    private boolean tienePrecioMaximo(BigDecimal precioMaximo) {
+        return precioMaximo != null && precioMaximo.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private boolean estaDentroDelRadio(PublicacionServicio publicacionServicio,
+                                       BuscarPublicacionesCompatiblesQuery query) {
+        if (ModalidadServicio.VIRTUAL.equals(query.getModalidadRequerida())) {
+            return true;
+        }
+        if (query.getRadioBusquedaKm() == null || query.getRadioBusquedaKm() <= 0) {
+            return true;
+        }
+        Double distanciaKm = calcularDistanciaKm(publicacionServicio, query);
+        return distanciaKm == null || distanciaKm <= query.getRadioBusquedaKm();
     }
 
     // Fórmula de Haversine para calcular distancia entre dos coordenadas en km

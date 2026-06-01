@@ -41,9 +41,10 @@ public class CrearPublicacionService implements CrearPublicacionUseCase {
             throw new IllegalArgumentException("El comando no puede ser nulo.");
         }
         validarUsuarioPuedePublicar(command.getUsuarioId());
-        if (publicacionServicioRepositoryPort.existePorUsuarioIdYTitulo(
-                command.getUsuarioId(), command.getTitulo())) {
-            throw new IllegalStateException("Ya existe una publicación con ese título para este usuario.");
+        String localidad = command.getUbicacion() != null ? command.getUbicacion().getLocalidad() : null;
+        if (publicacionServicioRepositoryPort.existePorUsuarioIdTituloYLocalidad(
+                command.getUsuarioId(), command.getTitulo(), localidad)) {
+            throw new IllegalStateException("Ya existe una publicación con ese título para esta localidad.");
         }
         CategoriaServicio categoriaServicio = obtenerCategoriaActiva(command.getCategoriaServicioId());
         validarDisponibilidades(command);

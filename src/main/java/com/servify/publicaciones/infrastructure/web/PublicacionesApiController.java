@@ -14,6 +14,7 @@ import com.servify.publicaciones.application.port.in.CambiarEstadoPublicacionUse
 import com.servify.publicaciones.application.port.in.CrearCategoriaServicioUseCase;
 import com.servify.publicaciones.application.port.in.CrearPublicacionUseCase;
 import com.servify.publicaciones.application.port.in.ListarCategoriasActivasUseCase;
+import com.servify.publicaciones.application.port.in.ListarPublicacionesPorCategoriaUseCase;
 import com.servify.publicaciones.application.port.in.ListarPublicacionesDeUsuarioUseCase;
 import com.servify.publicaciones.application.port.in.ObtenerPublicacionUseCase;
 import com.servify.publicaciones.domain.enumtype.EstadoCategoria;
@@ -46,6 +47,7 @@ public class PublicacionesApiController {
     private final CambiarEstadoPublicacionUseCase cambiarEstadoPublicacionUseCase;
     private final ObtenerPublicacionUseCase obtenerPublicacionUseCase;
     private final ListarPublicacionesDeUsuarioUseCase listarPublicacionesDeUsuarioUseCase;
+    private final ListarPublicacionesPorCategoriaUseCase listarPublicacionesPorCategoriaUseCase;
     private final BuscarPublicacionesCompatiblesUseCase buscarPublicacionesCompatiblesUseCase;
 
     public PublicacionesApiController(
@@ -56,6 +58,7 @@ public class PublicacionesApiController {
             CambiarEstadoPublicacionUseCase cambiarEstadoPublicacionUseCase,
             ObtenerPublicacionUseCase obtenerPublicacionUseCase,
             ListarPublicacionesDeUsuarioUseCase listarPublicacionesDeUsuarioUseCase,
+            ListarPublicacionesPorCategoriaUseCase listarPublicacionesPorCategoriaUseCase,
             BuscarPublicacionesCompatiblesUseCase buscarPublicacionesCompatiblesUseCase
     ) {
         this.crearCategoriaServicioUseCase = crearCategoriaServicioUseCase;
@@ -65,6 +68,7 @@ public class PublicacionesApiController {
         this.cambiarEstadoPublicacionUseCase = cambiarEstadoPublicacionUseCase;
         this.obtenerPublicacionUseCase = obtenerPublicacionUseCase;
         this.listarPublicacionesDeUsuarioUseCase = listarPublicacionesDeUsuarioUseCase;
+        this.listarPublicacionesPorCategoriaUseCase = listarPublicacionesPorCategoriaUseCase;
         this.buscarPublicacionesCompatiblesUseCase = buscarPublicacionesCompatiblesUseCase;
     }
 
@@ -96,6 +100,13 @@ public class PublicacionesApiController {
     @GetMapping("/categorias/activas")
     public ResponseEntity<List<CategoriaServicioResult>> listarCategoriasActivas() {
         return ResponseEntity.ok(listarCategoriasActivasUseCase.listarActivas());
+    }
+
+    @GetMapping("/categorias/{categoriaId}/publicaciones")
+    public ResponseEntity<List<PublicacionServicioResult>> listarPublicacionesActivasPorCategoria(
+            @PathVariable UUID categoriaId
+    ) {
+        return ResponseEntity.ok(listarPublicacionesPorCategoriaUseCase.listarActivasPorCategoria(categoriaId));
     }
 
     @PostMapping("/publicaciones")

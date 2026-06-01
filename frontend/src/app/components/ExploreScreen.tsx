@@ -1,0 +1,365 @@
+import { useEffect, useMemo, useState } from "react";
+import { Search, ChevronRight, ArrowRight, Bell, RefreshCcw, X } from "lucide-react";
+import { motion } from "motion/react";
+import { servifyApi, type ApiPublication, type ApiReceivedRequest, type ApiRequest, type SessionUser } from "../api";
+
+const categories = [
+  { id: 1, label: "Oficios", emoji: "🔧", color: "#0891b2", bg: "#f0f9ff" },
+  { id: 2, label: "Clases particulares", emoji: "📚", color: "#7c3aed", bg: "#f5f3ff" },
+  { id: 3, label: "Soporte técnico", emoji: "💻", color: "#2563eb", bg: "#eff6ff" },
+  { id: 4, label: "Limpieza", emoji: "✨", color: "#0891b2", bg: "#ecfeff" },
+  { id: 5, label: "Diseño", emoji: "🎨", color: "#db2777", bg: "#fdf2f8" },
+  { id: 6, label: "Reparaciones", emoji: "🔩", color: "#d97706", bg: "#fffbeb" },
+  { id: 7, label: "Fotografía", emoji: "📷", color: "#16a34a", bg: "#f0fdf4" },
+  { id: 8, label: "Salud y bienestar", emoji: "💚", color: "#059669", bg: "#ecfdf5" },
+  { id: 9, label: "Otro", emoji: "🌟", color: "#7c3aed", bg: "#f5f3ff" },
+];
+
+interface ExploreScreenProps {
+  userName: string;
+  onCreateRequest: () => void;
+  onCategoryPress: (cat: string) => void;
+}
+
+export function ExploreScreen({ user, userName, onCreateRequest, onCategoryPress }: ExploreScreenProps & { user?: SessionUser | null }) {
+  const [search, setSearch] = useState("");
+  const firstName = userName.split(" ")[0];
+  const [remoteRequests, setRemoteRequests] = useState<ApiReceivedRequest[] | null>(null);
+  const [ownRequests, setOwnRequests] = useState<ApiRequest[]>([]);
+  const [ownPublications, setOwnPublications] = useState<ApiPublication[]>([]);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    setActivityLoading(Boolean(user));
+    setRemoteRequests(null);
+    setOwnRequests([]);
+    setOwnPublications([]);
+
+    if (!user) {
+      setActivityLoading(false);
+      return;
+    }
+
+    const shouldLoadProviderData = user.role === "provider" || user.role === "both";
+
+    Promise.all([
+      shouldLoadProviderData ? servifyApi.listReceivedRequests(String(user.id)).catch(() => []) : Promise.resolve([]),
+      servifyApi.listUserRequests(String(user.id)).catch(() => []),
+      shouldLoadProviderData ? servifyApi.listUserPublications(String(user.id)).catch(() => []) : Promise.resolve([]),
+    ])
+      .then(([received, requests, publications]) => {
+        if (ignore) return;
+        setRemoteRequests(received || []);
+        setOwnRequests(requests || []);
+        setOwnPublications(publications || []);
+      })
+      .finally(() => {
+        if (!ignore) setActivityLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
+
+  const filtered = search
+    ? categories.filter((c) => c.label.toLowerCase().includes(search.toLowerCase()))
+    : categories;
+  const activity = useMemo(
+    () => buildActivitySummary(remoteRequests ?? [], ownRequests, ownPublications),
+    [ownPublications, ownRequests, remoteRequests]
+  );
+
+  return (
+    <div className="flex flex-col h-full" style={{ background: "#f8fafc" }}>
+      {/* Header */}
+      <div
+        className="px-5 pt-12 pb-5"
+        style={{ background: "white" }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>Hola 👋</p>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
+              ¿Qué necesitás,
+              <br />
+              {firstName}?
+            </h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActivityOpen((open) => !open)}
+            className="relative flex items-center justify-center rounded-2xl"
+            style={{ width: 44, height: 44, background: "#f1f5f9" }}
+          >
+            <Bell size={20} color="#475569" strokeWidth={1.8} />
+            {activity.badgeCount > 0 ? (
+              <div
+                className="absolute -top-1 -right-1 rounded-full flex items-center justify-center"
+                style={{ minWidth: 18, height: 18, padding: "0 5px", background: "#ef4444", border: "2px solid white" }}
+              >
+                <span style={{ color: "white", fontSize: 10, fontWeight: 800 }}>
+                  {activity.badgeCount > 9 ? "9+" : activity.badgeCount}
+                </span>
+              </div>
+            ) : null}
+          </button>
+        </div>
+
+        {activityOpen ? (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-2xl bg-white"
+            style={{ border: "1px solid #e2e8f0", boxShadow: "0 12px 28px rgba(15,23,42,0.08)" }}
+          >
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <div>
+                <p style={{ color: "#0f172a", fontSize: 14, fontWeight: 800 }}>Actividad</p>
+                <p style={{ color: "#64748b", fontSize: 12, fontWeight: 600 }}>
+                  Resumen local, sin push en este release
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivityOpen(false)}
+                className="flex items-center justify-center rounded-xl"
+                style={{ width: 32, height: 32, background: "#f8fafc" }}
+              >
+                <X size={15} color="#64748b" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2 px-4 py-3">
+              {activityLoading ? (
+                <ActivityRow
+                  tone="neutral"
+                  title="Actualizando actividad"
+                  detail="Consultando solicitudes y publicaciones del backend."
+                />
+              ) : (
+                activity.items.map((item) => (
+                  <ActivityRow key={item.title} tone={item.tone} title={item.title} detail={item.detail} />
+                ))
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+
+        {/* Search */}
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: "#f1f5f9", border: "1.5px solid #e2e8f0" }}
+        >
+          <Search size={18} color="#94a3b8" strokeWidth={1.8} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar categoría…"
+            className="flex-1 bg-transparent outline-none"
+            style={{ fontSize: 14, color: "#0f172a" }}
+          />
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 flex flex-col gap-5">
+        {/* If provider, try to load provider-relevant requests from backend */}
+        {(user?.role === "provider" || user?.role === "both") && remoteRequests && (
+          <div className="mb-3">
+            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>Recomendados para vos</p>
+            <div className="flex flex-col gap-2.5">
+              {remoteRequests.length === 0 && <p style={{ color: "#64748b" }}>No hay solicitudes compatibles por ahora</p>}
+              {remoteRequests.map((r, i) => (
+                <motion.button
+                  key={r.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                  onClick={() => onCategoryPress(r.descripcionNecesidad ?? "")}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white text-left transition-all active:scale-[0.98]"
+                  style={{ border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+                >
+                  <div className="flex-1">
+                    <p style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{(r.descripcionNecesidad || "Solicitud de servicio").split('.')[0]}</p>
+                    <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>{r.descripcionNecesidad}</p>
+                  </div>
+                  <ChevronRight size={18} color="#cbd5e1" strokeWidth={2} />
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Featured card */}
+        {!search && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-3xl overflow-hidden relative"
+            style={{
+              background: "linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #164e63 100%)",
+              minHeight: 150,
+            }}
+          >
+            {/* Decorative circles */}
+            <div
+              className="absolute -top-6 -right-6 rounded-full opacity-20"
+              style={{ width: 120, height: 120, background: "white" }}
+            />
+            <div
+              className="absolute -bottom-8 -left-4 rounded-full opacity-10"
+              style={{ width: 100, height: 100, background: "white" }}
+            />
+
+            <div className="relative p-5">
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: 500, marginBottom: 4 }}>
+                ¿Buscás un experto?
+              </p>
+              <h2 style={{ fontSize: 19, fontWeight: 800, color: "white", lineHeight: 1.25, marginBottom: 16 }}>
+                Encontrá el experto{"\n"}que necesitás
+              </h2>
+              <button
+                onClick={onCreateRequest}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all active:scale-95"
+                style={{ background: "white", color: "#0891b2", fontWeight: 700, fontSize: 13 }}
+              >
+                Crear solicitud
+                <ArrowRight size={15} strokeWidth={2.2} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Categories */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Categorías</h3>
+            <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+              {filtered.length} disponibles
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {filtered.map((cat, i) => (
+              <motion.button
+                key={cat.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+                onClick={() => onCategoryPress(cat.label)}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-white text-left transition-all active:scale-[0.98]"
+                style={{ border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-xl"
+                  style={{ width: 46, height: 46, background: cat.bg, flexShrink: 0 }}
+                >
+                  <span style={{ fontSize: 22 }}>{cat.emoji}</span>
+                </div>
+                <div className="flex-1">
+                  <p style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{cat.label}</p>
+                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, fontWeight: 500 }}>
+                    Ver servicios disponibles
+                  </p>
+                </div>
+                <ChevronRight size={18} color="#cbd5e1" strokeWidth={2} />
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ActivityTone = "urgent" | "info" | "success" | "neutral";
+
+interface ActivityItem {
+  title: string;
+  detail: string;
+  tone: ActivityTone;
+}
+
+function buildActivitySummary(
+  receivedRequests: ApiReceivedRequest[],
+  ownRequests: ApiRequest[],
+  ownPublications: ApiPublication[]
+): { badgeCount: number; items: ActivityItem[] } {
+  const pendingReceived = receivedRequests.filter((request) =>
+    ["ENVIADA", "CONTRAOFERTADA"].includes((request.estadoDistribucion ?? request.estado ?? "").toUpperCase())
+  );
+  const activeOwnRequests = ownRequests.filter((request) =>
+    ["BUSCANDO_PRESTADOR", "ASIGNADA"].includes((request.estado ?? "").toUpperCase())
+  );
+  const pausedPublications = ownPublications.filter((publication) =>
+    ["PAUSADA", "INACTIVA"].includes((publication.estado ?? "").toUpperCase())
+  );
+  const activePublications = ownPublications.filter((publication) =>
+    (publication.estado ?? "").toUpperCase() === "ACTIVA"
+  );
+
+  const items: ActivityItem[] = [];
+  if (pendingReceived.length > 0) {
+    items.push({
+      title: `${pendingReceived.length} solicitud${pendingReceived.length === 1 ? "" : "es"} para revisar`,
+      detail: "Tenes pedidos compatibles esperando respuesta.",
+      tone: "urgent",
+    });
+  }
+  if (activeOwnRequests.length > 0) {
+    items.push({
+      title: `${activeOwnRequests.length} solicitud${activeOwnRequests.length === 1 ? "" : "es"} activa${activeOwnRequests.length === 1 ? "" : "s"}`,
+      detail: "Tus pedidos siguen buscando o ya tienen asignacion.",
+      tone: "info",
+    });
+  }
+  if (pausedPublications.length > 0) {
+    items.push({
+      title: `${pausedPublications.length} publicacion${pausedPublications.length === 1 ? "" : "es"} pausada${pausedPublications.length === 1 ? "" : "s"}`,
+      detail: "Podrias reactivarlas desde Mis publicaciones.",
+      tone: "neutral",
+    });
+  }
+  if (items.length === 0) {
+    items.push({
+      title: activePublications.length > 0 ? "Todo al dia" : "Sin actividad pendiente",
+      detail: activePublications.length > 0
+        ? `${activePublications.length} publicacion${activePublications.length === 1 ? "" : "es"} activa${activePublications.length === 1 ? "" : "s"} disponible${activePublications.length === 1 ? "" : "s"}.`
+        : "Cuando haya solicitudes o cambios relevantes van a aparecer aca.",
+      tone: "success",
+    });
+  }
+
+  return {
+    badgeCount: pendingReceived.length + activeOwnRequests.length,
+    items,
+  };
+}
+
+function ActivityRow({ title, detail, tone }: ActivityItem) {
+  const colors: Record<ActivityTone, { bg: string; fg: string }> = {
+    urgent: { bg: "#fef2f2", fg: "#dc2626" },
+    info: { bg: "#eff6ff", fg: "#2563eb" },
+    success: { bg: "#f0fdf4", fg: "#16a34a" },
+    neutral: { bg: "#f8fafc", fg: "#64748b" },
+  };
+  const color = colors[tone];
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl px-3 py-2.5" style={{ background: color.bg }}>
+      <div
+        className="flex items-center justify-center rounded-full mt-0.5"
+        style={{ width: 24, height: 24, background: "white", color: color.fg }}
+      >
+        <RefreshCcw size={13} strokeWidth={2} />
+      </div>
+      <div className="min-w-0">
+        <p style={{ color: "#0f172a", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{title}</p>
+        <p style={{ color: "#64748b", fontSize: 12, fontWeight: 600, lineHeight: 1.35, marginTop: 2 }}>{detail}</p>
+      </div>
+    </div>
+  );
+}

@@ -22,4 +22,8 @@ public interface PublicacionServicioRepositoryPort {
     List<PublicacionServicio> buscarActivasPorCategoria(UUID categoriaServicioId);
 
     boolean existePorUsuarioIdYTitulo(UUID usuarioId, String titulo);
+
+    default boolean existePorUsuarioIdTituloYLocalidad(UUID usuarioId, String titulo, String localidad) {
+        return existePorUsuarioIdYTitulo(usuarioId, titulo);
+    }
 }

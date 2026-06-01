@@ -109,8 +109,9 @@ public class Usuario extends BaseEntity {
     }
 
     public boolean tienePerfilCompleto() {
-        // Consume la marca calculada sobre el perfil asociado.
-        return perfil != null && Boolean.TRUE.equals(perfil.getPerfilCompleto());
+        // Usa la marca persistida, pero tambien recalcula para no bloquear perfiles viejos.
+        return perfil != null
+                && (Boolean.TRUE.equals(perfil.getPerfilCompleto()) || perfil.estaCompleto());
     }
 
     public boolean puedePublicarServicios() {

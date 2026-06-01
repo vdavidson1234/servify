@@ -116,7 +116,6 @@ public class PerfilUsuario extends BaseEntity {
         // Regla basica de completitud del perfil.
         return tieneNombreCompleto()
                 && tieneEdadValida()
-                && tieneFotoPerfil()
                 && tieneUbicacionValida();
     }
 

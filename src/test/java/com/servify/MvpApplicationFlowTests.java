@@ -94,10 +94,14 @@ import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
 import com.servify.usuarios.application.port.out.UsuarioRepositoryPort;
 import com.servify.usuarios.application.service.ActualizarPerfilUsuarioService;
 import com.servify.usuarios.application.service.CrearUsuarioService;
+import com.servify.usuarios.domain.enumtype.EstadoUsuario;
+import com.servify.usuarios.domain.enumtype.EstadoValidacionIdentidad;
 import com.servify.usuarios.domain.enumtype.Rol;
 import com.servify.usuarios.domain.model.PerfilUsuario;
 import com.servify.usuarios.domain.model.Usuario;
 import com.servify.usuarios.domain.service.PoliticaPerfilCompleto;
+import com.servify.usuarios.domain.valueobject.Contacto;
+import com.servify.usuarios.domain.valueobject.NombreCompleto;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -321,6 +325,34 @@ class MvpApplicationFlowTests {
         assertTrue(publicacion.puedeParticiparEnDistribucion());
     }
 
+    @Test
+    void usuarioConPerfilLegacyCompletoPeroBanderaFalsePuedePublicar() {
+        UUID usuarioId = UUID.randomUUID();
+        PerfilUsuario perfil = new PerfilUsuario(
+                UUID.randomUUID(),
+                usuarioId,
+                new NombreCompleto("Lucia", "Paredes"),
+                29,
+                null,
+                ubicacionCaba(),
+                "Perfil migrado desde datos previos",
+                false
+        );
+        Usuario usuario = new Usuario(
+                usuarioId,
+                new Contacto("legacy-publicador@servify.test", null),
+                Rol.USUARIO,
+                EstadoUsuario.ACTIVO,
+                EstadoValidacionIdentidad.NO_REQUERIDA,
+                perfil,
+                LocalDateTime.now()
+        );
+
+        assertTrue(perfil.estaCompleto());
+        assertFalse(perfil.getPerfilCompleto());
+        assertTrue(usuario.puedePublicarServicios());
+    }
+
     private static Ubicacion ubicacionCaba() {
         return new Ubicacion(
                 "Argentina",
@@ -478,6 +510,13 @@ class MvpApplicationFlowTests {
         @Override
         public boolean existePorEmail(String email) {
             return buscarPorEmail(email).isPresent();
+        }
+
+        @Override
+        public List<Usuario> listarPorEstado(com.servify.usuarios.domain.enumtype.EstadoUsuario estado) {
+            return usuarios.values().stream()
+                    .filter(usuario -> usuario.getEstado() == estado)
+                    .toList();
         }
     }
 
@@ -900,7 +939,9 @@ class MvpApplicationFlowTests {
                                                               Integer radioBusquedaKm) {
             Map<UUID, UUID> compatibles = new LinkedHashMap<>();
             for (PublicacionServicio publicacion : publicaciones.buscarActivasPorCategoria(categoriaServicioId)) {
-                if (precioMaximo != null && publicacion.getPrecioBase().compareTo(precioMaximo) > 0) {
+                if (precioMaximo != null
+                        && precioMaximo.compareTo(BigDecimal.ZERO) > 0
+                        && publicacion.getPrecioBase().compareTo(precioMaximo) > 0) {
                     continue;
                 }
                 if (politica.esCompatible(

@@ -15,14 +15,18 @@ import com.servify.administracion.application.service.ModerarPublicacionService;
 import com.servify.administracion.application.service.ObtenerConfiguracionGeneralService;
 import com.servify.administracion.application.service.ObtenerMedidasAdministrativasDeUsuarioService;
 import com.servify.autenticacion.application.port.in.CerrarSesionUseCase;
+import com.servify.autenticacion.application.port.in.AutenticarConIdentidadExternaUseCase;
 import com.servify.autenticacion.application.port.in.IniciarSesionUseCase;
 import com.servify.autenticacion.application.port.in.RegistrarCredencialesUseCase;
 import com.servify.autenticacion.application.port.in.RenovarTokenUseCase;
 import com.servify.autenticacion.application.port.out.CredencialAccesoRepositoryPort;
+import com.servify.autenticacion.application.port.out.IdentidadExternaRepositoryPort;
 import com.servify.autenticacion.application.port.out.PasswordHasherPort;
+import com.servify.autenticacion.application.port.out.ProveedorIdentidadVerifierPort;
 import com.servify.autenticacion.application.port.out.RefreshTokenRepositoryPort;
 import com.servify.autenticacion.application.port.out.TokenProviderPort;
 import com.servify.autenticacion.application.port.out.UsuarioAutenticablePort;
+import com.servify.autenticacion.application.service.AutenticarConIdentidadExternaService;
 import com.servify.autenticacion.application.service.CerrarSesionService;
 import com.servify.autenticacion.application.service.IniciarSesionService;
 import com.servify.autenticacion.application.service.RegistrarCredencialesService;
@@ -35,6 +39,7 @@ import com.servify.publicaciones.application.port.in.CambiarEstadoPublicacionUse
 import com.servify.publicaciones.application.port.in.CrearCategoriaServicioUseCase;
 import com.servify.publicaciones.application.port.in.CrearPublicacionUseCase;
 import com.servify.publicaciones.application.port.in.ListarCategoriasActivasUseCase;
+import com.servify.publicaciones.application.port.in.ListarPublicacionesPorCategoriaUseCase;
 import com.servify.publicaciones.application.port.in.ListarPublicacionesDeUsuarioUseCase;
 import com.servify.publicaciones.application.port.in.ObtenerPublicacionUseCase;
 import com.servify.publicaciones.application.port.out.CategoriaServicioRepositoryPort;
@@ -48,6 +53,7 @@ import com.servify.publicaciones.application.service.CambiarEstadoPublicacionSer
 import com.servify.publicaciones.application.service.CrearCategoriaServicioService;
 import com.servify.publicaciones.application.service.CrearPublicacionService;
 import com.servify.publicaciones.application.service.ListarCategoriasActivasService;
+import com.servify.publicaciones.application.service.ListarPublicacionesPorCategoriaService;
 import com.servify.publicaciones.application.service.ListarPublicacionesDeUsuarioService;
 import com.servify.publicaciones.application.service.ObtenerPublicacionService;
 import com.servify.publicaciones.domain.service.PoliticaCompatibilidadPublicacion;
@@ -93,15 +99,19 @@ import com.servify.solicitudes.domain.service.PoliticaFinalizacionMutua;
 import com.servify.usuarios.application.port.in.ActualizarPerfilUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CambiarEstadoUsuarioUseCase;
 import com.servify.usuarios.application.port.in.CrearUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ListarUsuariosUseCase;
 import com.servify.usuarios.application.port.in.ObtenerConfiguracionCuentaUseCase;
 import com.servify.usuarios.application.port.in.ObtenerPerfilUsuarioUseCase;
+import com.servify.usuarios.application.port.in.ObtenerReputacionUsuarioUseCase;
 import com.servify.usuarios.application.port.out.PerfilUsuarioRepositoryPort;
 import com.servify.usuarios.application.port.out.UsuarioRepositoryPort;
 import com.servify.usuarios.application.service.ActualizarPerfilUsuarioService;
 import com.servify.usuarios.application.service.CambiarEstadoUsuarioService;
 import com.servify.usuarios.application.service.CrearUsuarioService;
+import com.servify.usuarios.application.service.ListarUsuariosService;
 import com.servify.usuarios.application.service.ObtenerConfiguracionCuentaService;
 import com.servify.usuarios.application.service.ObtenerPerfilUsuarioService;
+import com.servify.usuarios.application.service.ObtenerReputacionUsuarioService;
 import com.servify.usuarios.domain.service.PoliticaPerfilCompleto;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -150,6 +160,11 @@ public class MvpUseCaseConfiguration {
     }
 
     @Bean
+    ListarUsuariosUseCase listarUsuariosUseCase(UsuarioRepositoryPort usuarioRepositoryPort) {
+        return new ListarUsuariosService(usuarioRepositoryPort);
+    }
+
+    @Bean
     ActualizarPerfilUsuarioUseCase actualizarPerfilUsuarioUseCase(
             UsuarioRepositoryPort usuarioRepositoryPort,
             PerfilUsuarioRepositoryPort perfilUsuarioRepositoryPort,
@@ -173,6 +188,13 @@ public class MvpUseCaseConfiguration {
             PerfilUsuarioRepositoryPort perfilUsuarioRepositoryPort
     ) {
         return new ObtenerConfiguracionCuentaService(usuarioRepositoryPort, perfilUsuarioRepositoryPort);
+    }
+
+    @Bean
+    ObtenerReputacionUsuarioUseCase obtenerReputacionUsuarioUseCase(
+            CalificacionRepositoryPort calificacionRepositoryPort
+    ) {
+        return new ObtenerReputacionUsuarioService(calificacionRepositoryPort);
     }
 
     @Bean
@@ -214,14 +236,35 @@ public class MvpUseCaseConfiguration {
     RenovarTokenUseCase renovarTokenUseCase(
             RefreshTokenRepositoryPort refreshTokenRepositoryPort,
             CredencialAccesoRepositoryPort credencialAccesoRepositoryPort,
+            IdentidadExternaRepositoryPort identidadExternaRepositoryPort,
             TokenProviderPort tokenProviderPort,
             UsuarioAutenticablePort usuarioAutenticablePort
     ) {
         return new RenovarTokenService(
                 refreshTokenRepositoryPort,
                 credencialAccesoRepositoryPort,
+                identidadExternaRepositoryPort,
                 tokenProviderPort,
                 usuarioAutenticablePort
+        );
+    }
+
+    @Bean
+    AutenticarConIdentidadExternaUseCase autenticarConIdentidadExternaUseCase(
+            ProveedorIdentidadVerifierPort proveedorIdentidadVerifierPort,
+            IdentidadExternaRepositoryPort identidadExternaRepositoryPort,
+            UsuarioRepositoryPort usuarioRepositoryPort,
+            PerfilUsuarioRepositoryPort perfilUsuarioRepositoryPort,
+            TokenProviderPort tokenProviderPort,
+            RefreshTokenRepositoryPort refreshTokenRepositoryPort
+    ) {
+        return new AutenticarConIdentidadExternaService(
+                proveedorIdentidadVerifierPort,
+                identidadExternaRepositoryPort,
+                usuarioRepositoryPort,
+                perfilUsuarioRepositoryPort,
+                tokenProviderPort,
+                refreshTokenRepositoryPort
         );
     }
 
@@ -308,6 +351,13 @@ public class MvpUseCaseConfiguration {
             PublicacionServicioRepositoryPort publicacionServicioRepositoryPort
     ) {
         return new ListarPublicacionesDeUsuarioService(publicacionServicioRepositoryPort);
+    }
+
+    @Bean
+    ListarPublicacionesPorCategoriaUseCase listarPublicacionesPorCategoriaUseCase(
+            PublicacionServicioRepositoryPort publicacionServicioRepositoryPort
+    ) {
+        return new ListarPublicacionesPorCategoriaService(publicacionServicioRepositoryPort);
     }
 
     @Bean

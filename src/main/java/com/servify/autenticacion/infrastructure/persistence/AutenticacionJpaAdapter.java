@@ -1,8 +1,11 @@
 package com.servify.autenticacion.infrastructure.persistence;
 
 import com.servify.autenticacion.application.port.out.CredencialAccesoRepositoryPort;
+import com.servify.autenticacion.application.port.out.IdentidadExternaRepositoryPort;
 import com.servify.autenticacion.application.port.out.RefreshTokenRepositoryPort;
+import com.servify.autenticacion.domain.enumtype.ProveedorIdentidadExterna;
 import com.servify.autenticacion.domain.model.CredencialAcceso;
+import com.servify.autenticacion.domain.model.IdentidadExterna;
 import com.servify.autenticacion.domain.model.RefreshToken;
 import com.servify.usuarios.infrastructure.persistence.UsuarioJpaAdapter;
 import jakarta.persistence.*;
@@ -46,7 +49,8 @@ class CredencialAccesoJpaEntity {
 class RefreshTokenJpaEntity {
     @Id @Column(columnDefinition = "uuid") private UUID id;
     @Column(name = "usuario_id", nullable = false) private Long usuarioId;
-    @Column(name = "credencial_acceso_id", nullable = false, columnDefinition = "uuid") private UUID credencialAccesoId;
+    @Column(name = "credencial_acceso_id", columnDefinition = "uuid") private UUID credencialAccesoId;
+    @Column(name = "identidad_externa_id", columnDefinition = "uuid") private UUID identidadExternaId;
     @Column(name = "token_hash", nullable = false, unique = true) private String tokenHash;
     @Column(name = "fecha_emision", nullable = false) private LocalDateTime fechaEmision;
     @Column(name = "fecha_expiracion", nullable = false) private LocalDateTime fechaExpiracion;
@@ -58,12 +62,45 @@ class RefreshTokenJpaEntity {
     public UUID getId() { return id; } public void setId(UUID id) { this.id = id; }
     public Long getUsuarioId() { return usuarioId; } public void setUsuarioId(Long v) { this.usuarioId = v; }
     public UUID getCredencialAccesoId() { return credencialAccesoId; } public void setCredencialAccesoId(UUID v) { this.credencialAccesoId = v; }
+    public UUID getIdentidadExternaId() { return identidadExternaId; } public void setIdentidadExternaId(UUID v) { this.identidadExternaId = v; }
     public String getTokenHash() { return tokenHash; } public void setTokenHash(String v) { this.tokenHash = v; }
     public LocalDateTime getFechaEmision() { return fechaEmision; } public void setFechaEmision(LocalDateTime v) { this.fechaEmision = v; }
     public LocalDateTime getFechaExpiracion() { return fechaExpiracion; } public void setFechaExpiracion(LocalDateTime v) { this.fechaExpiracion = v; }
     public LocalDateTime getFechaRevocacion() { return fechaRevocacion; } public void setFechaRevocacion(LocalDateTime v) { this.fechaRevocacion = v; }
     public Boolean getActivo() { return activo; } public void setActivo(Boolean v) { this.activo = v; }
     public LocalDateTime getCreatedAt() { return createdAt; } public void setCreatedAt(LocalDateTime v) { this.createdAt = v; }
+}
+
+// ── IdentidadExternaJpaEntity ─────────────────────────────────
+@Entity
+@Table(name = "identidad_externa")
+class IdentidadExternaJpaEntity {
+    @Id @Column(columnDefinition = "uuid") private UUID id;
+    @Column(name = "usuario_id", nullable = false) private Long usuarioId;
+    @Column(name = "proveedor", nullable = false) private String proveedor;
+    @Column(name = "subject", nullable = false) private String subject;
+    @Column(name = "email", nullable = false) private String email;
+    @Column(name = "email_verificado", nullable = false) private Boolean emailVerificado;
+    @Column(name = "nombre_mostrado") private String nombreMostrado;
+    @Column(name = "fecha_vinculacion", nullable = false) private LocalDateTime fechaVinculacion;
+    @Column(name = "ultimo_acceso") private LocalDateTime ultimoAcceso;
+    @Column(name = "habilitada", nullable = false) private Boolean habilitada;
+    @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
+    @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt;
+
+    protected IdentidadExternaJpaEntity() {}
+    public UUID getId() { return id; } public void setId(UUID id) { this.id = id; }
+    public Long getUsuarioId() { return usuarioId; } public void setUsuarioId(Long v) { this.usuarioId = v; }
+    public String getProveedor() { return proveedor; } public void setProveedor(String v) { this.proveedor = v; }
+    public String getSubject() { return subject; } public void setSubject(String v) { this.subject = v; }
+    public String getEmail() { return email; } public void setEmail(String v) { this.email = v; }
+    public Boolean getEmailVerificado() { return emailVerificado; } public void setEmailVerificado(Boolean v) { this.emailVerificado = v; }
+    public String getNombreMostrado() { return nombreMostrado; } public void setNombreMostrado(String v) { this.nombreMostrado = v; }
+    public LocalDateTime getFechaVinculacion() { return fechaVinculacion; } public void setFechaVinculacion(LocalDateTime v) { this.fechaVinculacion = v; }
+    public LocalDateTime getUltimoAcceso() { return ultimoAcceso; } public void setUltimoAcceso(LocalDateTime v) { this.ultimoAcceso = v; }
+    public Boolean getHabilitada() { return habilitada; } public void setHabilitada(Boolean v) { this.habilitada = v; }
+    public LocalDateTime getCreatedAt() { return createdAt; } public void setCreatedAt(LocalDateTime v) { this.createdAt = v; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; } public void setUpdatedAt(LocalDateTime v) { this.updatedAt = v; }
 }
 
 // ── Repositories ─────────────────────────────────────────────
@@ -76,6 +113,12 @@ interface CredencialAccesoJpaRepository extends JpaRepository<CredencialAccesoJp
 interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenJpaEntity, UUID> {
     Optional<RefreshTokenJpaEntity> findByTokenHash(String tokenHash);
     List<RefreshTokenJpaEntity> findByUsuarioIdAndActivoTrue(Long usuarioId);
+}
+
+interface IdentidadExternaJpaRepository extends JpaRepository<IdentidadExternaJpaEntity, UUID> {
+    Optional<IdentidadExternaJpaEntity> findByProveedorAndSubject(String proveedor, String subject);
+    Optional<IdentidadExternaJpaEntity> findByUsuarioIdAndProveedor(Long usuarioId, String proveedor);
+    List<IdentidadExternaJpaEntity> findByUsuarioId(Long usuarioId);
 }
 
 // ── CredencialAccesoJpaAdapter ───────────────────────────────
@@ -139,6 +182,94 @@ class CredencialAccesoJpaAdapter implements CredencialAccesoRepositoryPort {
     }
 }
 
+// ── IdentidadExternaJpaAdapter ────────────────────────────────
+@Component
+class IdentidadExternaJpaAdapter implements IdentidadExternaRepositoryPort {
+
+    private final IdentidadExternaJpaRepository identidadRepo;
+
+    IdentidadExternaJpaAdapter(IdentidadExternaJpaRepository identidadRepo) {
+        this.identidadRepo = identidadRepo;
+    }
+
+    @Override
+    public IdentidadExterna guardar(IdentidadExterna identidad) {
+        IdentidadExternaJpaEntity e = toEntity(identidad);
+        if (e.getCreatedAt() == null) e.setCreatedAt(LocalDateTime.now());
+        e.setUpdatedAt(LocalDateTime.now());
+        return toDomain(identidadRepo.save(e));
+    }
+
+    @Override
+    public Optional<IdentidadExterna> buscarPorId(UUID identidadExternaId) {
+        return identidadRepo.findById(identidadExternaId).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<IdentidadExterna> buscarPorProveedorYSubject(
+            ProveedorIdentidadExterna proveedor,
+            String subject
+    ) {
+        return identidadRepo.findByProveedorAndSubject(toDbProveedor(proveedor), subject).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<IdentidadExterna> buscarPorUsuarioIdYProveedor(
+            UUID usuarioId,
+            ProveedorIdentidadExterna proveedor
+    ) {
+        return identidadRepo.findByUsuarioIdAndProveedor(
+                usuarioId.getLeastSignificantBits(),
+                toDbProveedor(proveedor)
+        ).map(this::toDomain);
+    }
+
+    @Override
+    public List<IdentidadExterna> buscarPorUsuarioId(UUID usuarioId) {
+        return identidadRepo.findByUsuarioId(usuarioId.getLeastSignificantBits())
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    private IdentidadExternaJpaEntity toEntity(IdentidadExterna identidad) {
+        IdentidadExternaJpaEntity e = new IdentidadExternaJpaEntity();
+        e.setId(identidad.getId());
+        e.setUsuarioId(identidad.getUsuarioId() != null ? identidad.getUsuarioId().getLeastSignificantBits() : null);
+        e.setProveedor(toDbProveedor(identidad.getProveedor()));
+        e.setSubject(identidad.getSubject());
+        e.setEmail(identidad.getEmail());
+        e.setEmailVerificado(identidad.getEmailVerificado());
+        e.setNombreMostrado(identidad.getNombreMostrado());
+        e.setFechaVinculacion(identidad.getFechaVinculacion());
+        e.setUltimoAcceso(identidad.getUltimoAcceso());
+        e.setHabilitada(identidad.getHabilitada());
+        return e;
+    }
+
+    private IdentidadExterna toDomain(IdentidadExternaJpaEntity e) {
+        IdentidadExterna identidad = new IdentidadExterna(
+                e.getId(),
+                UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
+                ProveedorIdentidadExterna.desdeApiValue(e.getProveedor()),
+                e.getSubject(),
+                e.getEmail(),
+                e.getEmailVerificado(),
+                e.getNombreMostrado(),
+                e.getFechaVinculacion(),
+                e.getUltimoAcceso(),
+                e.getHabilitada()
+        );
+        if (e.getCreatedAt() != null) identidad.marcarCreacion(e.getCreatedAt());
+        if (e.getUpdatedAt() != null) identidad.marcarModificacion(e.getUpdatedAt());
+        return identidad;
+    }
+
+    private String toDbProveedor(ProveedorIdentidadExterna proveedor) {
+        return proveedor != null ? proveedor.getApiValue() : null;
+    }
+}
+
 // ── RefreshTokenJpaAdapter ───────────────────────────────────
 @Component
 public class AutenticacionJpaAdapter implements RefreshTokenRepositoryPort {
@@ -177,6 +308,7 @@ public class AutenticacionJpaAdapter implements RefreshTokenRepositoryPort {
         e.setId(r.getId());
         e.setUsuarioId(r.getUsuarioId() != null ? r.getUsuarioId().getLeastSignificantBits() : null);
         e.setCredencialAccesoId(r.getCredencialAccesoId());
+        e.setIdentidadExternaId(r.getIdentidadExternaId());
         e.setTokenHash(r.getTokenHash());
         e.setFechaEmision(r.getFechaEmision());
         e.setFechaExpiracion(r.getFechaExpiracion());
@@ -188,7 +320,7 @@ public class AutenticacionJpaAdapter implements RefreshTokenRepositoryPort {
     private RefreshToken toDomain(RefreshTokenJpaEntity e) {
         RefreshToken r = new RefreshToken(
                 e.getId(), UsuarioJpaAdapter.uuidFromLong(e.getUsuarioId()),
-                e.getCredencialAccesoId(), e.getTokenHash(),
+                e.getCredencialAccesoId(), e.getIdentidadExternaId(), e.getTokenHash(),
                 e.getFechaEmision(), e.getFechaExpiracion(),
                 e.getFechaRevocacion(), e.getActivo());
         if (e.getCreatedAt() != null) r.marcarCreacion(e.getCreatedAt());

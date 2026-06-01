@@ -1,9 +1,13 @@
 package com.servify;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
@@ -106,6 +110,15 @@ class MvpHttpFlowTests {
                 """.formatted(prestadorId)))
                 .andExpect(status().isOk());
 
+        JsonNode publicacionesCategoria = responseJson(getPath("/api/v1/categorias/" + categoriaId + "/publicaciones"));
+        assertTrue(publicacionesCategoria.isArray());
+        assertEquals(publicacionId.toString(), publicacionesCategoria.get(0).get("id").asText());
+
+        JsonNode reputacionInicial = responseJson(getPath("/api/v1/usuarios/" + prestadorId + "/reputacion"));
+        assertEquals(prestadorId.toString(), reputacionInicial.get("usuarioId").asText());
+        assertEquals(0, reputacionInicial.get("cantidadValoraciones").asInt());
+        assertEquals(0.0, reputacionInicial.get("promedioEstrellas").asDouble());
+
         UUID solicitudId = idFrom(postCreatedPath("/api/v1/solicitudes", """
                 {
                   "solicitanteId": "%s",
@@ -157,6 +170,257 @@ class MvpHttpFlowTests {
         assertNotNull(asignacionId);
     }
 
+    @Test
+    void listarUsuariosActivos_exponeEndpointSimpleParaVerificarBackendLocal() throws Exception {
+        UUID usuarioId = crearUsuario("diagnostico-http@servify.test");
+
+        JsonNode usuarios = responseJson(getPath("/api/v1/usuarios?estado=ACTIVO"));
+
+        assertNotNull(usuarioId);
+        org.junit.jupiter.api.Assertions.assertTrue(usuarios.isArray());
+        org.junit.jupiter.api.Assertions.assertTrue(usuarios.size() >= 1);
+    }
+
+    @Test
+    void prestadorConPerfilCompletoSinFotoPuedeCrearPublicacion() throws Exception {
+        UUID prestadorId = crearUsuario("prestador-sin-foto-http@servify.test");
+
+        JsonNode perfil = responseJson(putPath("/api/v1/usuarios/" + prestadorId + "/perfil", """
+                {
+                  "nombre": "Lucia",
+                  "apellido": "Paredes",
+                  "edad": 29,
+                  "fotoPerfilUrl": "",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "Caballito",
+                    "calle": "Rivadavia",
+                    "altura": "5000",
+                    "referencia": "Local",
+                    "latitud": -34.61,
+                    "longitud": -58.44
+                  },
+                  "descripcionPersonal": "Electricidad domiciliaria"
+                }
+                """));
+        assertTrue(perfil.get("perfilCompleto").asBoolean());
+
+        UUID categoriaId = crearCategoriaActiva("Electricidad sin foto HTTP");
+
+        UUID publicacionId = idFrom(postCreatedPath("/api/v1/publicaciones", """
+                {
+                  "usuarioId": "%s",
+                  "categoriaServicioId": "%s",
+                  "titulo": "Electricista sin foto HTTP",
+                  "descripcion": "Instalaciones y arreglos generales",
+                  "modalidadServicio": "PRESENCIAL",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "Caballito",
+                    "calle": "Rivadavia",
+                    "altura": "5000",
+                    "referencia": "Local",
+                    "latitud": -34.61,
+                    "longitud": -58.44
+                  },
+                  "disponibilidadesHorarias": [
+                    {
+                      "diaSemana": "TUESDAY",
+                      "horaDesde": "10:00:00",
+                      "horaHasta": "13:00:00"
+                    }
+                  ],
+                  "precioBase": 2000
+                }
+                """.formatted(prestadorId, categoriaId)));
+
+        assertNotNull(publicacionId);
+    }
+
+    @Test
+    void autenticacionSocialGoogle_creaSesionYPermiteRenovarRefreshToken() throws Exception {
+        JsonNode sesion = responseJson(postPath("/api/v1/auth/social/google", """
+                {
+                  "idToken": "fake:google:google-sub-http:social-http@servify.test",
+                  "rol": "USUARIO"
+                }
+                """));
+
+        assertNotNull(sesion.get("usuarioId").asText());
+        assertEquals("social-http@servify.test", sesion.get("emailAcceso").asText());
+
+        String refreshToken = sesion.get("refreshToken").get("token").asText();
+        JsonNode sesionRenovada = responseJson(postPath("/api/v1/auth/refresh", """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken)));
+
+        assertEquals(sesion.get("usuarioId").asText(), sesionRenovada.get("usuarioId").asText());
+        assertEquals("social-http@servify.test", sesionRenovada.get("emailAcceso").asText());
+
+        UUID usuarioSocialId = UUID.fromString(sesion.get("usuarioId").asText());
+        JsonNode perfilSocial = responseJson(getPath("/api/v1/usuarios/" + usuarioSocialId + "/perfil"));
+        assertEquals("Usuario", perfilSocial.get("nombre").asText());
+        assertEquals("google", perfilSocial.get("apellido").asText());
+
+        UUID categoriaId = crearCategoriaActiva("Servicios social Google HTTP");
+        UUID publicacionId = idFrom(postCreatedPath("/api/v1/publicaciones", """
+                {
+                  "usuarioId": "%s",
+                  "categoriaServicioId": "%s",
+                  "titulo": "Servicio publicado con Google HTTP",
+                  "descripcion": "Publicacion creada por usuario social",
+                  "modalidadServicio": "PRESENCIAL",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "Palermo",
+                    "calle": "Santa Fe",
+                    "altura": "1234",
+                    "referencia": "PB",
+                    "latitud": -34.58,
+                    "longitud": -58.42
+                  },
+                  "disponibilidadesHorarias": [
+                    {
+                      "diaSemana": "WEDNESDAY",
+                      "horaDesde": "09:00:00",
+                      "horaHasta": "12:00:00"
+                    }
+                  ],
+                  "precioBase": 1800
+                }
+                """.formatted(usuarioSocialId, categoriaId)));
+
+        assertNotNull(publicacionId);
+    }
+
+    @Test
+    void autenticacionSocialLinkedin_vinculaUsuarioExistentePorEmailVerificado() throws Exception {
+        UUID usuarioId = crearUsuario("linkedin-http@servify.test");
+
+        JsonNode sesion = responseJson(postPath("/api/v1/auth/social/linkedin", """
+                {
+                  "idToken": "fake:linkedin:linkedin-sub-http:linkedin-http@servify.test"
+                }
+                """));
+
+        assertEquals(usuarioId.toString(), sesion.get("usuarioId").asText());
+        assertEquals("linkedin-http@servify.test", sesion.get("emailAcceso").asText());
+    }
+
+    @Test
+    void solicitudSinPrecioReferenciaNoBloqueaPublicacionCompatibleConPrecioBase() throws Exception {
+        UUID solicitanteId = crearUsuario("cliente-sin-precio-http@servify.test");
+        UUID prestadorId = crearUsuario("guitarra-sin-precio-http@servify.test");
+        completarPerfilPalermo(prestadorId);
+        UUID categoriaId = crearCategoriaActiva("Clases particulares sin precio HTTP");
+
+        UUID publicacionId = crearPublicacionActiva(prestadorId, categoriaId, "Clases de guitarra sin precio HTTP", "Palermo", 15000);
+        assertNotNull(publicacionId);
+
+        UUID solicitudId = idFrom(postCreatedPath("/api/v1/solicitudes", """
+                {
+                  "solicitanteId": "%s",
+                  "categoriaServicioId": "%s",
+                  "modalidadServicio": "PRESENCIAL",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "Palermo",
+                    "calle": "Santa Fe",
+                    "altura": "1400",
+                    "referencia": "Depto 2",
+                    "latitud": -34.5889,
+                    "longitud": -58.4306
+                  },
+                  "disponibilidadRequerida": {
+                    "diaSemana": "MONDAY",
+                    "horaDesde": "10:00:00",
+                    "horaHasta": "11:00:00"
+                  },
+                  "descripcionNecesidad": "Busco una clase inicial de guitarra"
+                }
+                """.formatted(solicitanteId, categoriaId)));
+
+        JsonNode recibidas = responseJson(getPath("/api/v1/prestadores/" + prestadorId + "/solicitudes-recibidas"));
+        assertNotNull(solicitudId);
+        assertEquals(1, recibidas.size());
+        assertEquals(publicacionId.toString(), recibidas.get(0).get("publicacionServicioId").asText());
+    }
+
+    @Test
+    void eliminarPublicacionUsaBorradoLogicoYLaOcultaDeLaCategoria() throws Exception {
+        UUID prestadorId = crearUsuario("delete-publicacion-http@servify.test");
+        completarPerfilPalermo(prestadorId);
+        UUID categoriaId = crearCategoriaActiva("Publicaciones eliminadas HTTP");
+        UUID publicacionId = crearPublicacionActiva(prestadorId, categoriaId, "Servicio eliminable HTTP", "Palermo", 9000);
+
+        JsonNode eliminada = responseJson(putOrPatchPublicacionEstado(publicacionId, prestadorId, "ELIMINADA"));
+        assertEquals("ELIMINADA", eliminada.get("estado").asText());
+
+        JsonNode publicacionesCategoria = responseJson(getPath("/api/v1/categorias/" + categoriaId + "/publicaciones"));
+        assertTrue(publicacionesCategoria.isArray());
+        assertEquals(0, publicacionesCategoria.size());
+    }
+
+    @Test
+    void permiteMismoServicioEnVariasLocalidadesDelMismoPrestador() throws Exception {
+        UUID prestadorId = crearUsuario("multi-zona-http@servify.test");
+        completarPerfilPalermo(prestadorId);
+        UUID categoriaId = crearCategoriaActiva("Multi zona HTTP");
+
+        UUID palermoId = idFrom(postCreatedPath("/api/v1/publicaciones", publicacionJson(
+                prestadorId,
+                categoriaId,
+                "Clases de guitarra multi zona HTTP",
+                "Palermo",
+                -34.5889,
+                -58.4306,
+                15000
+        )));
+        UUID belgranoId = idFrom(postCreatedPath("/api/v1/publicaciones", publicacionJson(
+                prestadorId,
+                categoriaId,
+                "Clases de guitarra multi zona HTTP",
+                "Belgrano",
+                -34.5621,
+                -58.4567,
+                15000
+        )));
+
+        assertNotNull(palermoId);
+        assertNotNull(belgranoId);
+    }
+
+    @Test
+    void corsPermiteFrontendLocalYLanParaDesarrollo() throws Exception {
+        mockMvc.perform(options("/api/v1/usuarios")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+
+        mockMvc.perform(options("/api/v1/usuarios")
+                        .header("Origin", "http://192.168.1.51:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://192.168.1.51:5173"));
+
+        mockMvc.perform(options("/api/v1/usuarios")
+                        .header("Origin", "http://127.0.0.1:8081")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:8081"));
+    }
+
     private UUID crearUsuario(String email) throws Exception {
         return idFrom(postCreatedPath("/api/v1/usuarios", """
                 {
@@ -165,6 +429,122 @@ class MvpHttpFlowTests {
                   "rol": "USUARIO"
                 }
                 """.formatted(email)));
+    }
+
+    private void completarPerfilPalermo(UUID usuarioId) throws Exception {
+        mockMvc.perform(putJson("/api/v1/usuarios/" + usuarioId + "/perfil", """
+                {
+                  "nombre": "Juan",
+                  "apellido": "Guitarra",
+                  "edad": 30,
+                  "fotoPerfilUrl": "",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "Palermo",
+                    "calle": "Santa Fe",
+                    "altura": "1234",
+                    "referencia": "PB",
+                    "latitud": -34.5889,
+                    "longitud": -58.4306
+                  },
+                  "descripcionPersonal": "Profesor de guitarra"
+                }
+                """))
+                .andExpect(status().isOk());
+    }
+
+    private UUID crearPublicacionActiva(
+            UUID prestadorId,
+            UUID categoriaId,
+            String titulo,
+            String localidad,
+            int precioBase
+    ) throws Exception {
+        UUID publicacionId = idFrom(postCreatedPath("/api/v1/publicaciones", publicacionJson(
+                prestadorId,
+                categoriaId,
+                titulo,
+                localidad,
+                localidad.equalsIgnoreCase("Belgrano") ? -34.5621 : -34.5889,
+                localidad.equalsIgnoreCase("Belgrano") ? -58.4567 : -58.4306,
+                precioBase
+        )));
+
+        putOrPatchPublicacionEstado(publicacionId, prestadorId, "ACTIVA");
+        return publicacionId;
+    }
+
+    private String putOrPatchPublicacionEstado(UUID publicacionId, UUID usuarioId, String estadoDestino) throws Exception {
+        return mockMvc.perform(patchJson("/api/v1/publicaciones/" + publicacionId + "/estado", """
+                {
+                  "usuarioId": "%s",
+                  "estadoDestino": "%s",
+                  "motivo": "Cambio desde test"
+                }
+                """.formatted(usuarioId, estadoDestino)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
+    private String publicacionJson(
+            UUID prestadorId,
+            UUID categoriaId,
+            String titulo,
+            String localidad,
+            double latitud,
+            double longitud,
+            int precioBase
+    ) {
+        return """
+                {
+                  "usuarioId": "%s",
+                  "categoriaServicioId": "%s",
+                  "titulo": "%s",
+                  "descripcion": "Servicio de prueba para matching",
+                  "modalidadServicio": "PRESENCIAL",
+                  "ubicacion": {
+                    "pais": "Argentina",
+                    "provincia": "Buenos Aires",
+                    "ciudad": "CABA",
+                    "localidad": "%s",
+                    "calle": "Santa Fe",
+                    "altura": "1234",
+                    "referencia": "PB",
+                    "latitud": %s,
+                    "longitud": %s
+                  },
+                  "disponibilidadesHorarias": [
+                    {
+                      "diaSemana": "MONDAY",
+                      "horaDesde": "09:00:00",
+                      "horaHasta": "18:00:00"
+                    }
+                  ],
+                  "precioBase": %d
+                }
+                """.formatted(prestadorId, categoriaId, titulo, localidad, latitud, longitud, precioBase);
+    }
+
+    private UUID crearCategoriaActiva(String nombre) throws Exception {
+        UUID categoriaId = idFrom(postCreatedPath("/api/v1/categorias", """
+                {
+                  "nombre": "%s",
+                  "descripcion": "Categoria creada por test HTTP"
+                }
+                """.formatted(nombre)));
+
+        mockMvc.perform(patchJson("/api/v1/categorias/" + categoriaId + "/estado", """
+                {
+                  "estadoDestino": "ACTIVA",
+                  "motivo": "Preparacion test"
+                }
+                """))
+                .andExpect(status().isOk());
+        return categoriaId;
     }
 
     private UUID idFrom(String json) throws Exception {
@@ -185,6 +565,14 @@ class MvpHttpFlowTests {
 
     private String postPath(String path, String json) throws Exception {
         return mockMvc.perform(postJson(path, json))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
+    private String putPath(String path, String json) throws Exception {
+        return mockMvc.perform(putJson(path, json))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

@@ -9,6 +9,7 @@ public class RefreshToken extends BaseEntity {
 
     private UUID usuarioId;
     private UUID credencialAccesoId;
+    private UUID identidadExternaId;
     private String tokenHash;
     private LocalDateTime fechaEmision;
     private LocalDateTime fechaExpiracion;
@@ -26,9 +27,32 @@ public class RefreshToken extends BaseEntity {
                         LocalDateTime fechaExpiracion,
                         LocalDateTime fechaRevocacion,
                         Boolean activo) {
+        this(
+                id,
+                usuarioId,
+                credencialAccesoId,
+                null,
+                tokenHash,
+                fechaEmision,
+                fechaExpiracion,
+                fechaRevocacion,
+                activo
+        );
+    }
+
+    public RefreshToken(UUID id,
+                        UUID usuarioId,
+                        UUID credencialAccesoId,
+                        UUID identidadExternaId,
+                        String tokenHash,
+                        LocalDateTime fechaEmision,
+                        LocalDateTime fechaExpiracion,
+                        LocalDateTime fechaRevocacion,
+                        Boolean activo) {
         super(id);
         this.usuarioId = usuarioId;
         this.credencialAccesoId = credencialAccesoId;
+        this.identidadExternaId = identidadExternaId;
         this.tokenHash = tokenHash;
         this.fechaEmision = fechaEmision;
         this.fechaExpiracion = fechaExpiracion;
@@ -42,6 +66,10 @@ public class RefreshToken extends BaseEntity {
 
     public UUID getCredencialAccesoId() {
         return credencialAccesoId;
+    }
+
+    public UUID getIdentidadExternaId() {
+        return identidadExternaId;
     }
 
     public String getTokenHash() {
